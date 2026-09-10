@@ -1,0 +1,262 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  --color-chart-1: hsl(var(--chart-1));
+  --color-chart-2: hsl(var(--chart-2));
+  --color-chart-3: hsl(var(--chart-3));
+  --color-chart-4: hsl(var(--chart-4));
+  --color-chart-5: hsl(var(--chart-5));
+
+  --font-sans: var(--font-sans);
+  --font-serif: var(--font-serif);
+  --font-mono: var(--font-mono);
+}
+
+:root {
+  --background: 220 18% 98%;
+  --foreground: 222 24% 12%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 222 24% 12%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 24% 12%;
+
+  --primary: 222 47% 18%;
+  --primary-foreground: 0 0% 98%;
+
+  --secondary: 220 18% 95%;
+  --secondary-foreground: 222 24% 12%;
+
+  --muted: 220 16% 94%;
+  --muted-foreground: 222 10% 44%;
+
+  --accent: 215 35% 92%;
+  --accent-foreground: 222 24% 12%;
+
+  --destructive: 0 84% 58%;
+  --destructive-foreground: 0 0% 98%;
+
+  --border: 220 14% 88%;
+  --input: 220 14% 86%;
+  --ring: 222 47% 22%;
+
+  --chart-1: 222 47% 18%;
+  --chart-2: 12 78% 56%;
+  --chart-3: 35 92% 50%;
+  --chart-4: 207 78% 52%;
+  --chart-5: 160 62% 45%;
+
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  --font-serif: "Libre Baskerville", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
+  --radius: 14px;
+
+  --elevate-1: rgba(2, 6, 23, 0.04);
+  --elevate-2: rgba(2, 6, 23, 0.07);
+
+  --app-max: 1080px;
+  --app-rail: 320px;
+  --app-nav-h: 72px;
+  --app-fab-bottom: 92px;
+}
+
+.dark {
+  --background: 222 28% 8%;
+  --foreground: 0 0% 98%;
+
+  --card: 222 24% 10%;
+  --card-foreground: 0 0% 98%;
+
+  --popover: 222 24% 10%;
+  --popover-foreground: 0 0% 98%;
+
+  --primary: 0 0% 98%;
+  --primary-foreground: 222 28% 8%;
+
+  --secondary: 222 16% 16%;
+  --secondary-foreground: 0 0% 98%;
+
+  --muted: 222 16% 16%;
+  --muted-foreground: 215 12% 70%;
+
+  --accent: 222 18% 18%;
+  --accent-foreground: 0 0% 98%;
+
+  --destructive: 0 72% 52%;
+  --destructive-foreground: 0 0% 98%;
+
+  --border: 222 16% 18%;
+  --input: 222 16% 20%;
+  --ring: 215 20% 70%;
+
+  --elevate-1: rgba(255, 255, 255, 0.05);
+  --elevate-2: rgba(255, 255, 255, 0.08);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html,
+  body {
+    height: 100%;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  input[type="search"]::-webkit-search-cancel-button {
+    @apply hidden;
+  }
+
+  [contenteditable][data-placeholder]:empty::before {
+    content: attr(data-placeholder);
+    color: hsl(var(--muted-foreground));
+    pointer-events: none;
+  }
+
+  .app-gradient {
+    background:
+      radial-gradient(900px 520px at -10% -10%, rgba(30, 64, 175, 0.10), transparent 60%),
+      radial-gradient(860px 540px at 110% 0%, rgba(124, 58, 237, 0.08), transparent 60%),
+      radial-gradient(840px 600px at 20% 110%, rgba(2, 132, 199, 0.08), transparent 60%),
+      linear-gradient(180deg, rgba(255,255,255,0.85), rgba(255,255,255,1));
+  }
+
+  .app-card {
+    background: rgba(255,255,255,0.70);
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    box-shadow: 0 20px 50px rgba(2, 6, 23, 0.08);
+    backdrop-filter: blur(10px);
+  }
+
+  .app-shadow-soft {
+    box-shadow:
+      0 1px 0 rgba(2, 6, 23, 0.05),
+      0 18px 40px rgba(2, 6, 23, 0.10);
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .app-shell {
+    min-height: 100dvh;
+  }
+
+  .app-container {
+    width: 100%;
+    max-width: var(--app-max);
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 16px;
+    padding-right: 16px;
+    padding-top: 24px;
+    padding-bottom: calc(var(--app-nav-h) + 28px);
+  }
+
+  @media (min-width: 768px) {
+    .app-container {
+      padding-left: 24px;
+      padding-right: 24px;
+      padding-top: 28px;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .app-container {
+      padding-left: 28px;
+      padding-right: 28px;
+    }
+  }
+
+  .app-desktop-layout {
+    display: grid;
+    gap: 16px;
+  }
+
+  @media (min-width: 1024px) {
+    .app-desktop-layout {
+      grid-template-columns: 1fr var(--app-rail);
+      align-items: start;
+    }
+  }
+
+  .app-rail {
+    display: none;
+  }
+
+  @media (min-width: 1024px) {
+    .app-rail {
+      display: block;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+      padding-bottom: 24px;
+    }
+  }
+
+  .app-bottom-nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 50;
+    height: var(--app-nav-h);
+  }
+
+  .app-fab {
+    position: fixed;
+    right: 16px;
+    bottom: var(--app-fab-bottom);
+    z-index: 50;
+  }
+
+  @media (min-width: 1024px) {
+    .app-fab {
+      right: 28px;
+      bottom: calc(var(--app-nav-h) + 20px);
+    }
+  }
+}

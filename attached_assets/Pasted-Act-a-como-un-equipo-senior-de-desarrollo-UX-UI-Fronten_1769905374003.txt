@@ -1,0 +1,339 @@
+Actúa como un equipo senior de desarrollo (UX/UI + Frontend + Backend).
+
+Quiero que generes una aplicación web mobile-first para abogados llamada "AboxApp", basada en la siguiente especificación funcional y de UX/UI.
+
+Tecnología sugerida:
+- Frontend: React + Tailwind (o similar)
+- Navegación tipo app móvil (bottom navigation)
+- Componentes claros y reutilizables
+- Formularios con validaciones
+- Persistencia básica (puede ser localStorage o base simple)
+- Sin sistema de pagos
+- Con sistema de login y roles
+- Diseño profesional, sobrio y legible
+
+La aplicación debe incluir las siguientes pantallas y funcionalidades:
+
+========================
+1) SISTEMA DE LOGIN Y USUARIOS
+========================
+
+Pantalla Bienvenida:
+- Logo
+- Botones: "Crear cuenta" / "Iniciar sesión"
+
+Pantalla Crear Cuenta:
+Campos:
+- Nombre del estudio (texto)
+- Nombre del abogado principal (texto)
+- Email (email)
+- Teléfono (numérico)
+- Contraseña (mínimo 8 caracteres)
+- Confirmar contraseña
+
+Validaciones:
+- Email válido
+- Contraseña fuerte
+
+Pantalla Login:
+Campos:
+- Usuario (email)
+- Contraseña
+Opciones:
+- Recordarme
+- Olvidé contraseña
+
+Gestión de usuarios (desde Configuración):
+Lista de usuarios con:
+- Nombre
+- Rol (Abogado / Asistente)
+- Estado (activo/inactivo)
+
+Crear usuario:
+Campos:
+- Nombre
+- Email
+- Rol (Abogado / Asistente)
+- Contraseña
+
+Permisos:
+- Abogado: acceso completo
+- Asistente: no puede borrar expedientes
+
+========================
+2) DASHBOARD (HOME)
+========================
+
+Debe mostrar:
+Sección "Próximos eventos":
+- Fecha
+- Hora
+- Tipo (audiencia / vencimiento)
+- Cliente
+- Expediente
+
+Sección "Alertas":
+- Vencimientos hoy
+- Documentos pendientes
+
+Sección "Resumen":
+- Cantidad de expedientes activos
+- Audiencias esta semana
+
+Botones rápidos:
+- Nuevo cliente
+- Nuevo expediente
+- Nuevo evento
+
+========================
+3) CLIENTES
+========================
+
+Lista de clientes:
+Campos visibles:
+- Nombre
+- DNI/CUIT
+- Email
+- Teléfono
+- Dirección
+- Notas
+- Lista Negra (sí/no)
+- Cantidad de expedientes
+
+Buscador con filtro por:
+- Nombre
+- Apellido
+- Email
+- Teléfono
+
+Ficha cliente:
+Campos:
+- Nombre completo (texto)
+- DNI/CUIT (numérico)
+- Teléfono (numérico)
+- Email (email)
+- Dirección (texto)
+- Lista Negra (selector Sí/No)
+- Notas (textarea)
+
+Secciones:
+- Expedientes asociados
+- Documentos
+- Historial de eventos
+
+Botones:
+- Editar
+- Crear expediente
+
+========================
+4) EXPEDIENTES
+========================
+
+Lista de expedientes:
+Vista:
+- Lista o Kanban por estado
+
+Campos visibles:
+- Número
+- Cliente
+- Estado
+- Juzgado
+- Fecha inicio
+
+Filtros:
+- Estado
+- Fuero
+
+Ficha expediente:
+Campos:
+- Número de expediente (texto)
+- Fuero (select): civil, laboral, penal, familia, comercial
+- Juzgado (texto)
+- Estado (select):
+  - Iniciado
+  - En trámite
+  - Audiencia
+  - Sentencia
+  - Finalizado
+- Cliente (select o crear nuevo)
+- Fecha inicio (date)
+- Observaciones (textarea)
+
+Secciones:
+- Eventos
+- Documentos
+- Plantillas generadas
+
+Botones:
+- Agregar evento
+- Subir archivo
+- Generar documento
+
+========================
+5) AGENDA Y VENCIMIENTOS
+========================
+
+Vista calendario:
+Modos:
+- Día
+- Semana
+- Lista
+
+Colores:
+- Audiencia: rojo
+- Vencimiento: naranja
+- Reunión: azul
+
+Crear evento:
+Campos:
+- Tipo (select): Audiencia / Vencimiento / Reunión
+- Fecha (date)
+- Hora (time)
+- Expediente (select)
+- Cliente (select con buscador o crear nuevo)
+- Descripción (textarea)
+
+Alertas configurables:
+- 72 horas
+- 24 horas
+- 2 horas
+
+========================
+6) PLANTILLAS DE DOCUMENTOS
+========================
+
+Biblioteca de plantillas:
+Tipos:
+- Demanda
+- Contrato
+- Poder
+- Carta documento
+
+Crear plantilla:
+Campos:
+- Nombre de plantilla
+- Tipo
+- Contenido (editor de texto)
+
+Variables dinámicas:
+- {{cliente}}
+- {{dni}}
+- {{fecha}}
+- {{expediente}}
+
+Generar documento:
+Pasos:
+1. Elegir plantilla
+2. Completar datos
+3. Generar PDF/Word
+4. Guardar en expediente
+
+========================
+7) ARCHIVOS
+========================
+
+Subir archivo:
+Tipos:
+- PDF
+- Word
+- Imagen
+- Audio
+
+Campos:
+- Archivo
+- Expediente asociado
+- Descripción
+
+Lista de archivos:
+Muestra:
+- Nombre
+- Fecha
+- Tipo
+- Expediente
+
+Acciones:
+- Ver
+- Descargar
+- Eliminar
+
+========================
+8) ALERTAS AUTOMÁTICAS
+========================
+
+Canales:
+- Notificación en app
+- Email
+
+Configuración:
+- Activar / desactivar
+- Frecuencia
+
+Tipos:
+- Vencimiento
+- Audiencia
+- Documento pendiente
+
+========================
+9) CONFIGURACIÓN
+========================
+
+Opciones:
+- Perfil (firma con foto, nombre, apellido, teléfono, email – todo opcional)
+- Usuarios
+- Cerrar sesión
+
+========================
+10) NAVEGACIÓN
+========================
+
+Bottom Navigation:
+- Dashboard
+- Clientes
+- Expedientes
+- Agenda
+- Configuración
+
+Botón flotante:
+- Crear (cliente / expediente / evento)
+
+========================
+11) UX/UI GENERAL
+========================
+
+Requisitos:
+- Mobile first
+- Uso con una mano
+- Botones grandes
+- Tipografía legible
+- Colores sobrios profesionales
+- Validaciones visuales
+- Autocompletado
+- Teclado correcto según campo (numérico/email)
+- Mensajes claros
+- Accesibilidad (alto contraste)
+
+========================
+12) SEGURIDAD
+========================
+
+- Login con usuario y contraseña
+- Roles
+- Timeout automático
+- Bloqueo por PIN
+- Datos protegidos
+
+========================
+
+Quiero que generes:
+- Componentes para cada pantalla
+- Navegación funcional
+- Formularios completos
+- Estructura de datos (clientes, expedientes, eventos, documentos, usuarios)
+- UI limpia y profesional
+- Código organizado por componentes
+
+No inventes funcionalidades fuera de esta especificación.
+Respeta todos los campos y pantallas indicadas.
+Prioriza experiencia mobile.
+
+
