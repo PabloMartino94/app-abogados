@@ -333,8 +333,11 @@ export default function CaseDetailPage() {
                     variant="outline"
                     className="rounded-2xl"
                     data-testid={`button-view-file-${f.id}`}
+                    asChild
                   >
-                    Ver
+                    <a href={`/api/files/${f.id}/view`} target="_blank" rel="noopener noreferrer">
+                      Ver
+                    </a>
                   </Button>
                 </div>
               ))}
