@@ -1,32 +1,16 @@
-import nodemailer from "nodemailer";
+// Envío de notificaciones por email vía la API HTTP de Brevo en lugar de SMTP.
+//
+// Render bloquea el tráfico saliente por los puertos SMTP (25, 465, 587) en
+// los servicios del plan gratuito, así que enviar por Gmail/SMTP directo
+// nunca va a funcionar ahí (da igual el puerto o el proveedor). La API de
+// Brevo funciona sobre HTTPS normal (puerto 443), que no está bloqueado.
+const BREVO_API_KEY = process.env.BREVO_API_KEY;
+const BREVO_SENDER_EMAIL = process.env.BREVO_SENDER_EMAIL || process.env.GMAIL_USER;
+const NOTIFY_EMAIL = process.env.REPORTS_NOTIFY_EMAIL || BREVO_SENDER_EMAIL;
 
-const GMAIL_USER = process.env.GMAIL_USER;
-const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD;
-const NOTIFY_EMAIL = process.env.REPORTS_NOTIFY_EMAIL || GMAIL_USER;
-
-let transporter: ReturnType<typeof nodemailer.createTransport> | null = null;
-
-if (GMAIL_USER && GMAIL_APP_PASSWORD) {
-  // Se usa el puerto 587 (STARTTLS) en lugar del 465 (SSL) que trae por
-  // defecto el shorthand "service: gmail": algunos proveedores de hosting
-  // (incluido Render) bloquean el 465 y la conexión queda colgada hasta
-  // hacer timeout. El 587 suele estar permitido.
-  transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 587,
-    secure: false,
-    requireTLS: true,
-    auth: {
-      user: GMAIL_USER,
-      pass: GMAIL_APP_PASSWORD,
-    },
-    connectionTimeout: 15000,
-    greetingTimeout: 15000,
-    socketTimeout: 15000,
-  });
-} else {
+if (!BREVO_API_KEY || !BREVO_SENDER_EMAIL) {
   console.warn(
-    "GMAIL_USER / GMAIL_APP_PASSWORD no configurados — las notificaciones por email de reportes están deshabilitadas."
+    "BREVO_API_KEY / BREVO_SENDER_EMAIL no configurados — las notificaciones por email de reportes están deshabilitadas."
   );
 }
 
@@ -44,7 +28,7 @@ type ReportNotificationInput = {
 };
 
 export async function sendReportNotification(report: ReportNotificationInput): Promise<void> {
-  if (!transporter || !NOTIFY_EMAIL) return;
+  if (!BREVO_API_KEY || !BREVO_SENDER_EMAIL || !NOTIFY_EMAIL) return;
 
   const kindLabel = report.kind === "bug" ? "Error / Bug" : "Mejora";
   const subject = `[AboxApp] Nuevo reporte (${kindLabel}): ${report.title}`;
@@ -85,13 +69,26 @@ export async function sendReportNotification(report: ReportNotificationInput): P
     .replace(/>/g, "&gt;")}</pre>`;
 
   try {
-    await transporter.sendMail({
-      from: `"AboxApp" <${GMAIL_USER}>`,
-      to: NOTIFY_EMAIL,
-      subject,
-      text,
-      html,
+    const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "api-key": BREVO_API_KEY,
+      },
+      body: JSON.stringify({
+        sender: { name: "AboxApp", email: BREVO_SENDER_EMAIL },
+        to: [{ email: NOTIFY_EMAIL }],
+        subject,
+        textContent: text,
+        htmlContent: html,
+      }),
     });
+
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      throw new Error(`Brevo API respondió ${res.status}: ${body}`);
+    }
   } catch (err) {
     console.error("Error enviando email de notificación de reporte:", err);
   }
