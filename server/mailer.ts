@@ -7,12 +7,22 @@ const NOTIFY_EMAIL = process.env.REPORTS_NOTIFY_EMAIL || GMAIL_USER;
 let transporter: ReturnType<typeof nodemailer.createTransport> | null = null;
 
 if (GMAIL_USER && GMAIL_APP_PASSWORD) {
+  // Se usa el puerto 587 (STARTTLS) en lugar del 465 (SSL) que trae por
+  // defecto el shorthand "service: gmail": algunos proveedores de hosting
+  // (incluido Render) bloquean el 465 y la conexión queda colgada hasta
+  // hacer timeout. El 587 suele estar permitido.
   transporter = nodemailer.createTransport({
-    service: "gmail",
+    host: "smtp.gmail.com",
+    port: 587,
+    secure: false,
+    requireTLS: true,
     auth: {
       user: GMAIL_USER,
       pass: GMAIL_APP_PASSWORD,
     },
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
+    socketTimeout: 15000,
   });
 } else {
   console.warn(
