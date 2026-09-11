@@ -49,6 +49,11 @@ export interface IStorage {
   getAllNotificationSettings(accountId: string): Promise<schema.NotificationSetting[]>;
   getNotificationSetting(accountId: string, eventType: string): Promise<schema.NotificationSetting | undefined>;
   upsertNotificationSetting(input: schema.InsertNotificationSetting): Promise<schema.NotificationSetting>;
+
+  getAllReports(accountId: string): Promise<schema.Report[]>;
+  getReport(accountId: string, id: string): Promise<schema.Report | undefined>;
+  createReport(input: schema.InsertReport): Promise<schema.Report>;
+  updateReportStatus(accountId: string, id: string, status: string): Promise<schema.Report>;
 }
 
 export class DbStorage implements IStorage {
@@ -214,6 +219,25 @@ export class DbStorage implements IStorage {
       return rows[0];
     }
     const rows = await db.insert(schema.notificationSettings).values(input).returning();
+    return rows[0];
+  }
+
+  async getAllReports(accountId: string): Promise<schema.Report[]> {
+    return db.select().from(schema.reports).where(eq(schema.reports.accountId, accountId));
+  }
+
+  async getReport(accountId: string, id: string): Promise<schema.Report | undefined> {
+    const rows = await db.select().from(schema.reports).where(and(eq(schema.reports.id, id), eq(schema.reports.accountId, accountId)));
+    return rows[0];
+  }
+
+  async createReport(input: schema.InsertReport): Promise<schema.Report> {
+    const rows = await db.insert(schema.reports).values(input).returning();
+    return rows[0];
+  }
+
+  async updateReportStatus(accountId: string, id: string, status: string): Promise<schema.Report> {
+    const rows = await db.update(schema.reports).set({ status }).where(and(eq(schema.reports.id, id), eq(schema.reports.accountId, accountId))).returning();
     return rows[0];
   }
 }

@@ -130,3 +130,23 @@ export const notificationSettings = pgTable("notification_settings", {
 export const insertNotificationSettingSchema = createInsertSchema(notificationSettings).omit({ id: true });
 export type InsertNotificationSetting = z.infer<typeof insertNotificationSettingSchema>;
 export type NotificationSetting = typeof notificationSettings.$inferSelect;
+
+export const reports = pgTable("reports", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  accountId: varchar("account_id").notNull(),
+  reportedBy: varchar("reported_by").notNull(),
+  kind: text("kind").notNull(), // "bug" | "mejora"
+  title: text("title").notNull(),
+  description: text("description").notNull().default(""),
+  stepsToReproduce: text("steps_to_reproduce").notNull().default(""),
+  expectedBehavior: text("expected_behavior").notNull().default(""),
+  actualBehavior: text("actual_behavior").notNull().default(""),
+  pageContext: text("page_context").notNull().default(""),
+  priority: text("priority").notNull().default("Media"),
+  status: text("status").notNull().default("Nuevo"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertReportSchema = createInsertSchema(reports).omit({ id: true, createdAt: true, status: true });
+export type InsertReport = z.infer<typeof insertReportSchema>;
+export type Report = typeof reports.$inferSelect;

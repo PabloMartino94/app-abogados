@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useLocation } from "wouter";
-import { LogOut, Pencil, ShieldCheck, Trash2, UserPlus, BellRing, Mail, Plus, Variable, X } from "lucide-react";
+import { LogOut, Pencil, ShieldCheck, Trash2, UserPlus, BellRing, Mail, Plus, Variable, X, MessageSquareWarning } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -224,6 +224,35 @@ export default function SettingsPage() {
                 data-testid="button-save-profile"
               >
                 Guardar
+              </Button>
+            </div>
+          </Card>
+
+          <Card className="app-card rounded-3xl p-4">
+            <div className="flex items-center gap-2">
+              <MessageSquareWarning className="h-4 w-4 text-primary" />
+              <div className="text-sm font-semibold" data-testid="text-support-title">
+                ¿Encontraste un error o tenés una idea?
+              </div>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground" data-testid="text-support-desc">
+              Reportanos cualquier problema o sugerencia para mejorar la aplicación.
+            </p>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <Button
+                className="rounded-2xl"
+                onClick={() => setLocation("/app/reportar")}
+                data-testid="button-open-reportar"
+              >
+                Reportar
+              </Button>
+              <Button
+                variant="outline"
+                className="rounded-2xl"
+                onClick={() => setLocation("/app/reportes")}
+                data-testid="button-open-reportes"
+              >
+                Ver reportes{store.reports.length > 0 ? ` (${store.reports.length})` : ""}
               </Button>
             </div>
           </Card>

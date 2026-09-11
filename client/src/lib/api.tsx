@@ -1,6 +1,6 @@
 import { createContext, PropsWithChildren, useContext, useMemo } from "react";
 import { QueryClient, QueryClientProvider, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { AppEvent, AppFile, Case, CaseStatus, Client, DocTemplate, EmailTemplate, Fuero, NotificationSettings } from "@/lib/types";
+import type { AppEvent, AppFile, Case, CaseStatus, Client, DocTemplate, EmailTemplate, Fuero, NotificationSettings, Report, ReportKind, ReportPriority, ReportStatus } from "@/lib/types";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -19,6 +19,7 @@ type StoreApi = {
   emailTemplates: EmailTemplate[];
   notificationSettings: NotificationSettings;
   users: AccountUser[];
+  reports: Report[];
 
   createClient: (input: Omit<Client, "id" | "createdBy">) => Promise<Client>;
   updateClient: (id: string, input: Partial<Client>) => Promise<Client>;
@@ -32,6 +33,17 @@ type StoreApi = {
   updateEmailTemplate: (id: string, input: Partial<EmailTemplate>) => Promise<EmailTemplate>;
   deleteEmailTemplate: (id: string) => Promise<void>;
   setNotificationSettings: (next: NotificationSettings) => Promise<void>;
+  createReport: (input: {
+    kind: ReportKind;
+    title: string;
+    description: string;
+    stepsToReproduce?: string;
+    expectedBehavior?: string;
+    actualBehavior?: string;
+    pageContext?: string;
+    priority: ReportPriority;
+  }) => Promise<Report>;
+  updateReportStatus: (id: string, status: ReportStatus) => Promise<Report>;
 };
 
 const StoreContext = createContext<StoreApi | null>(null);
@@ -133,6 +145,42 @@ function useStoreData() {
     return defaults;
   }, [rawSettings]);
 
+  const { data: rawReports = [] } = useQuery({
+    queryKey: ["reports"],
+    queryFn: () =>
+      fetchJson<
+        Array<{
+          id: string;
+          reportedBy: string;
+          kind: string;
+          title: string;
+          description: string;
+          stepsToReproduce: string;
+          expectedBehavior: string;
+          actualBehavior: string;
+          pageContext: string;
+          priority: string;
+          status: string;
+          createdAt: string;
+        }>
+      >("/api/reports"),
+  });
+
+  const reports: Report[] = useMemo(() => {
+    return rawReports
+      .map((r) => {
+        const reporter = users.find((u) => u.id === r.reportedBy);
+        return {
+          ...r,
+          kind: r.kind as ReportKind,
+          priority: r.priority as ReportPriority,
+          status: r.status as ReportStatus,
+          reportedByName: reporter?.name ?? "—",
+        };
+      })
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  }, [rawReports, users]);
+
   const createClientMutation = useMutation({
     mutationFn: (input: Omit<Client, "id" | "createdBy">) => fetchJson<Client>("/api/clients", { method: "POST", body: JSON.stringify(input) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["clients"] }),
@@ -221,6 +269,26 @@ function useStoreData() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["notification-settings"] }),
   });
 
+  const createReportMutation = useMutation({
+    mutationFn: (input: {
+      kind: ReportKind;
+      title: string;
+      description: string;
+      stepsToReproduce?: string;
+      expectedBehavior?: string;
+      actualBehavior?: string;
+      pageContext?: string;
+      priority: ReportPriority;
+    }) => fetchJson<any>("/api/reports", { method: "POST", body: JSON.stringify(input) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["reports"] }),
+  });
+
+  const updateReportStatusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: ReportStatus }) =>
+      fetchJson<any>(`/api/reports/${id}`, { method: "PUT", body: JSON.stringify({ status }) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["reports"] }),
+  });
+
   return {
     clients,
     cases,
@@ -230,6 +298,7 @@ function useStoreData() {
     emailTemplates,
     notificationSettings,
     users,
+    reports,
     createClient: (input: Omit<Client, "id" | "createdBy">) => createClientMutation.mutateAsync(input),
     updateClient: (id: string, input: Partial<Client>) => updateClientMutation.mutateAsync({ id, ...input }),
     createCase: (input: Omit<Case, "id" | "clientName" | "createdBy">) => createCaseMutation.mutateAsync(input),
@@ -242,6 +311,17 @@ function useStoreData() {
     updateEmailTemplate: (id: string, input: Partial<EmailTemplate>) => updateEmailTemplateMutation.mutateAsync({ id, ...input }),
     deleteEmailTemplate: async (id: string) => { await deleteEmailTemplateMutation.mutateAsync(id); },
     setNotificationSettings: (next: NotificationSettings) => setNotificationSettingsMutation.mutateAsync(next),
+    createReport: (input: {
+      kind: ReportKind;
+      title: string;
+      description: string;
+      stepsToReproduce?: string;
+      expectedBehavior?: string;
+      actualBehavior?: string;
+      pageContext?: string;
+      priority: ReportPriority;
+    }) => createReportMutation.mutateAsync(input),
+    updateReportStatus: (id: string, status: ReportStatus) => updateReportStatusMutation.mutateAsync({ id, status }),
   };
 }
 

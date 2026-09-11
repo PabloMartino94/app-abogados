@@ -90,3 +90,25 @@ export type NotificationSettings = {
   Vencimiento: NotificationLeadMinutes;
   Reunión: NotificationLeadMinutes;
 };
+
+export type ReportKind = "bug" | "mejora";
+
+export type ReportPriority = "Baja" | "Media" | "Alta" | "Urgente";
+
+export type ReportStatus = "Nuevo" | "En revisión" | "En progreso" | "Resuelto" | "Rechazado";
+
+export type Report = {
+  id: string;
+  reportedBy: string;
+  reportedByName: string;
+  kind: ReportKind;
+  title: string;
+  description: string;
+  stepsToReproduce: string;
+  expectedBehavior: string;
+  actualBehavior: string;
+  pageContext: string;
+  priority: ReportPriority;
+  status: ReportStatus;
+  createdAt: string;
+};

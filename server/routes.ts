@@ -6,6 +6,7 @@ import bcrypt from "bcryptjs";
 import multer from "multer";
 import path from "path";
 import { uploadFile, downloadFile } from "./fileStorage";
+import { sendReportNotification } from "./mailer";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -339,6 +340,62 @@ export async function registerRoutes(
     if (!parsed.success) return res.status(400).json({ error: parsed.error });
     const setting = await storage.upsertNotificationSetting(parsed.data);
     res.status(200).json(setting);
+  });
+
+  app.get("/api/reports", requireAuth, async (req, res) => {
+    const reports = await storage.getAllReports(req.session.accountId!);
+    res.json(reports);
+  });
+
+  app.get("/api/reports/:id", requireAuth, async (req, res) => {
+    const report = await storage.getReport(req.session.accountId!, req.params.id);
+    if (!report) return res.status(404).json({ error: "Report not found" });
+    res.json(report);
+  });
+
+  app.post("/api/reports", requireAuth, async (req, res) => {
+    try {
+      const parsed = schema.insertReportSchema.safeParse({
+        ...req.body,
+        accountId: req.session.accountId,
+        reportedBy: req.session.userId,
+      });
+      if (!parsed.success) return res.status(400).json({ error: parsed.error });
+      const report = await storage.createReport(parsed.data);
+
+      const reporter = await storage.getUserById(req.session.userId!);
+      sendReportNotification({
+        id: report.id,
+        kind: report.kind,
+        title: report.title,
+        description: report.description,
+        stepsToReproduce: report.stepsToReproduce,
+        expectedBehavior: report.expectedBehavior,
+        actualBehavior: report.actualBehavior,
+        pageContext: report.pageContext,
+        priority: report.priority,
+        reporterName: reporter?.name || "Desconocido",
+      }).catch((err) => console.error("Error enviando notificación de reporte:", err));
+
+      res.status(201).json(report);
+    } catch (err: any) {
+      console.error("Create report error:", err);
+      res.status(500).json({ error: "Error al crear el reporte" });
+    }
+  });
+
+  app.put("/api/reports/:id", requireAuth, async (req, res) => {
+    try {
+      const { status } = req.body;
+      if (!status) return res.status(400).json({ error: "Falta el estado" });
+      const existing = await storage.getReport(req.session.accountId!, req.params.id);
+      if (!existing) return res.status(404).json({ error: "Report not found" });
+      const report = await storage.updateReportStatus(req.session.accountId!, req.params.id, status);
+      res.json(report);
+    } catch (err: any) {
+      console.error("Update report error:", err);
+      res.status(500).json({ error: "Error al actualizar el reporte" });
+    }
   });
 
   return httpServer;

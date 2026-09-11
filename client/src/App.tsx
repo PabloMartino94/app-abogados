@@ -18,6 +18,8 @@ import AgendaPage from "@/pages/agenda";
 import TemplatesPage from "@/pages/templates";
 import FilesPage from "@/pages/files";
 import SettingsPage from "@/pages/settings";
+import ReportarPage from "@/pages/reportar";
+import ReportesPage from "@/pages/reportes";
 import NotFound from "@/pages/not-found";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType<any> }) {
@@ -44,6 +46,8 @@ function Router() {
       <Route path="/app/plantillas">{() => <ProtectedRoute component={TemplatesPage} />}</Route>
       <Route path="/app/archivos">{() => <ProtectedRoute component={FilesPage} />}</Route>
       <Route path="/app/configuracion">{() => <ProtectedRoute component={SettingsPage} />}</Route>
+      <Route path="/app/reportar">{() => <ProtectedRoute component={ReportarPage} />}</Route>
+      <Route path="/app/reportes">{() => <ProtectedRoute component={ReportesPage} />}</Route>
 
       <Route component={NotFound} />
     </Switch>
