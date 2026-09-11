@@ -5,22 +5,10 @@ import * as schema from "../shared/schema.js";
 import bcrypt from "bcryptjs";
 import multer from "multer";
 import path from "path";
-import fs from "fs";
-
-const UPLOADS_DIR = path.join(process.cwd(), "uploads");
-if (!fs.existsSync(UPLOADS_DIR)) {
-  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-}
+import { uploadFile, downloadFile } from "./fileStorage";
 
 const upload = multer({
-  storage: multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, UPLOADS_DIR),
-    filename: (_req, file, cb) => {
-      const unique = Date.now() + "-" + Math.round(Math.random() * 1e9);
-      const ext = path.extname(file.originalname);
-      cb(null, unique + ext);
-    },
-  }),
+  storage: multer.memoryStorage(),
   limits: { fileSize: 50 * 1024 * 1024 },
 });
 
@@ -236,7 +224,14 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Faltan campos obligatorios" });
       }
       const now = new Date().toISOString().slice(0, 10);
-      const filePath = uploadedFile ? uploadedFile.filename : "";
+      let filePath = "";
+      if (uploadedFile) {
+        const unique = Date.now() + "-" + Math.round(Math.random() * 1e9);
+        const ext = path.extname(uploadedFile.originalname);
+        const key = `${req.session.accountId}/${unique}${ext}`;
+        await uploadFile(key, uploadedFile.buffer, uploadedFile.mimetype);
+        filePath = key;
+      }
       const file = await storage.createFile({
         accountId: req.session.accountId!,
         name,
@@ -257,19 +252,30 @@ export async function registerRoutes(
     const file = await storage.getFile(req.session.accountId!, req.params.id);
     if (!file) return res.status(404).json({ error: "File not found" });
     if (!file.filePath) return res.status(404).json({ error: "No file stored" });
-    const fullPath = path.join(UPLOADS_DIR, file.filePath);
-    if (!fs.existsSync(fullPath)) return res.status(404).json({ error: "File missing from disk" });
-    res.download(fullPath, file.name);
+    try {
+      const { buffer, contentType } = await downloadFile(file.filePath);
+      res.setHeader("Content-Type", contentType);
+      res.setHeader("Content-Disposition", `attachment; filename="${file.name}"`);
+      res.send(buffer);
+    } catch (err: any) {
+      console.error("Download file error:", err);
+      res.status(404).json({ error: "File missing from storage" });
+    }
   });
 
   app.get("/api/files/:id/view", requireAuth, async (req, res) => {
     const file = await storage.getFile(req.session.accountId!, req.params.id);
     if (!file) return res.status(404).json({ error: "File not found" });
     if (!file.filePath) return res.status(404).json({ error: "No file stored" });
-    const fullPath = path.join(UPLOADS_DIR, file.filePath);
-    if (!fs.existsSync(fullPath)) return res.status(404).json({ error: "File missing from disk" });
-    res.setHeader("Content-Disposition", `inline; filename="${file.name}"`);
-    res.sendFile(fullPath);
+    try {
+      const { buffer, contentType } = await downloadFile(file.filePath);
+      res.setHeader("Content-Type", contentType);
+      res.setHeader("Content-Disposition", `inline; filename="${file.name}"`);
+      res.send(buffer);
+    } catch (err: any) {
+      console.error("View file error:", err);
+      res.status(404).json({ error: "File missing from storage" });
+    }
   });
 
   app.get("/api/doc-templates", requireAuth, async (req, res) => {
