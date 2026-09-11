@@ -64,6 +64,7 @@ export default function AgendaPage() {
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<EventDraft | null>(null);
+  const [savingEvent, setSavingEvent] = useState(false);
 
   const [selectedDay, setSelectedDay] = useState<Date>(() => new Date());
   const weekStart = useMemo(() => startOfWeek(selectedDay, { weekStartsOn: 1 }), [selectedDay]);
@@ -136,25 +137,35 @@ export default function AgendaPage() {
   }
 
   async function saveEvent() {
-    if (!selectedEvent || !draft) return;
-    await store.updateEvent(selectedEvent.id, {
-      type: draft.type,
-      date: draft.date,
-      time: draft.time,
-      duration: draft.duration,
-      desc: draft.desc,
-      leadMinutes: draft.leadMinutes,
-      caseId: draft.caseId,
-      clientId: draft.clientId,
-    });
-    setEditing(false);
-    setDraft(null);
+    if (!selectedEvent || !draft || savingEvent) return;
+    setSavingEvent(true);
+    try {
+      await store.updateEvent(selectedEvent.id, {
+        type: draft.type,
+        date: draft.date,
+        time: draft.time,
+        duration: draft.duration,
+        desc: draft.desc,
+        leadMinutes: draft.leadMinutes,
+        caseId: draft.caseId,
+        clientId: draft.clientId,
+      });
+      setEditing(false);
+      setDraft(null);
+    } finally {
+      setSavingEvent(false);
+    }
   }
 
   async function cancelEvent() {
-    if (!selectedEvent) return;
-    await store.updateEvent(selectedEvent.id, { cancelled: true });
-    setSelectedEventId(null);
+    if (!selectedEvent || savingEvent) return;
+    setSavingEvent(true);
+    try {
+      await store.updateEvent(selectedEvent.id, { cancelled: true });
+      setSelectedEventId(null);
+    } finally {
+      setSavingEvent(false);
+    }
   }
 
   function renderEventRow(e: AppEvent, testIdPrefix: string) {
@@ -520,11 +531,11 @@ export default function AgendaPage() {
                 <div className="mt-2 flex flex-wrap gap-2">
                   {editing ? (
                     <>
-                      <Button className="rounded-2xl" onClick={saveEvent} data-testid="button-save-event">
+                      <Button className="rounded-2xl" onClick={saveEvent} disabled={savingEvent} data-testid="button-save-event">
                         <Check className="mr-1 h-4 w-4" />
-                        Guardar cambios
+                        {savingEvent ? "Guardando…" : "Guardar cambios"}
                       </Button>
-                      <Button variant="outline" className="rounded-2xl" onClick={cancelEditing} data-testid="button-cancel-edit-event">
+                      <Button variant="outline" className="rounded-2xl" onClick={cancelEditing} disabled={savingEvent} data-testid="button-cancel-edit-event">
                         <X className="mr-1 h-4 w-4" />
                         Cancelar
                       </Button>
@@ -533,13 +544,13 @@ export default function AgendaPage() {
                     <>
                       {!selectedEvent.cancelled && (
                         <>
-                          <Button variant="outline" className="rounded-2xl" onClick={startEditing} data-testid="button-edit-event">
+                          <Button variant="outline" className="rounded-2xl" onClick={startEditing} disabled={savingEvent} data-testid="button-edit-event">
                             <Pencil className="mr-1 h-4 w-4" />
                             Editar
                           </Button>
-                          <Button variant="destructive" className="rounded-2xl" onClick={cancelEvent} data-testid="button-cancel-event">
+                          <Button variant="destructive" className="rounded-2xl" onClick={cancelEvent} disabled={savingEvent} data-testid="button-cancel-event">
                             <Ban className="mr-1 h-4 w-4" />
-                            Anular evento
+                            {savingEvent ? "Anulando…" : "Anular evento"}
                           </Button>
                         </>
                       )}

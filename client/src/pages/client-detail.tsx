@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useRoute } from "wouter";
-import { ArrowLeft, FilePlus2, Pencil, ShieldAlert } from "lucide-react";
+import { ArrowLeft, FilePlus2, Pencil, ShieldAlert, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -40,6 +40,8 @@ export default function ClientDetailPage() {
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<Partial<Client>>({});
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (client) {
@@ -78,8 +80,30 @@ export default function ClientDetailPage() {
   }
 
   async function save() {
-    await store.updateClient(id, draft);
-    setEditing(false);
+    if (saving) return;
+    setSaving(true);
+    try {
+      await store.updateClient(id, draft);
+      setEditing(false);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (deleting) return;
+    const warning =
+      clientCases.length > 0
+        ? `Este cliente tiene ${clientCases.length} expediente${clientCases.length === 1 ? "" : "s"} asociado${clientCases.length === 1 ? "" : "s"}. Los expedientes NO se van a borrar, pero van a quedar sin cliente vinculado.\n\n¿Seguro que querés eliminar a este cliente?`
+        : "¿Seguro que querés eliminar a este cliente? Esta acción no se puede deshacer.";
+    if (!window.confirm(warning)) return;
+    setDeleting(true);
+    try {
+      await store.deleteClient(id);
+      setLocation("/app/clientes");
+    } finally {
+      setDeleting(false);
+    }
   }
 
   function cancel() {
@@ -112,6 +136,7 @@ export default function ClientDetailPage() {
             <Button
               variant="outline"
               className="rounded-2xl"
+              disabled={saving}
               onClick={() => {
                 if (editing) {
                   cancel();
@@ -124,6 +149,18 @@ export default function ClientDetailPage() {
               <Pencil className="h-4 w-4" />
               {editing ? "Cerrar" : "Editar"}
             </Button>
+            {!editing && (
+              <Button
+                variant="outline"
+                className="rounded-2xl text-red-600 hover:bg-red-50"
+                disabled={deleting}
+                onClick={handleDelete}
+                data-testid="button-delete-client"
+              >
+                <Trash2 className="h-4 w-4" />
+                {deleting ? "Eliminando…" : "Eliminar"}
+              </Button>
+            )}
           </div>
         </header>
 
@@ -240,10 +277,10 @@ export default function ClientDetailPage() {
 
               {editing ? (
                 <div className="flex gap-2">
-                  <Button className="rounded-2xl flex-1" onClick={save} data-testid="button-save-client">
-                    Guardar cambios
+                  <Button className="rounded-2xl flex-1" onClick={save} disabled={saving} data-testid="button-save-client">
+                    {saving ? "Guardando…" : "Guardar cambios"}
                   </Button>
-                  <Button variant="outline" className="rounded-2xl" onClick={cancel} data-testid="button-cancel-edit">
+                  <Button variant="outline" className="rounded-2xl" onClick={cancel} disabled={saving} data-testid="button-cancel-edit">
                     Cancelar
                   </Button>
                 </div>

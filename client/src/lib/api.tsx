@@ -23,6 +23,7 @@ type StoreApi = {
 
   createClient: (input: Omit<Client, "id" | "createdBy">) => Promise<Client>;
   updateClient: (id: string, input: Partial<Client>) => Promise<Client>;
+  deleteClient: (id: string) => Promise<void>;
   createCase: (input: Omit<Case, "id" | "clientName" | "createdBy">) => Promise<Case>;
   updateCase: (id: string, input: Partial<Case>) => Promise<Case>;
   createEvent: (input: Omit<AppEvent, "id" | "clientName" | "caseNumber" | "createdBy" | "cancelled">) => Promise<AppEvent>;
@@ -191,6 +192,11 @@ function useStoreData() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["clients"] }),
   });
 
+  const deleteClientMutation = useMutation({
+    mutationFn: (id: string) => fetchJson(`/api/clients/${id}`, { method: "DELETE" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["clients"] }),
+  });
+
   const createCaseMutation = useMutation({
     mutationFn: (input: Omit<Case, "id" | "clientName" | "createdBy">) => fetchJson<any>("/api/cases", { method: "POST", body: JSON.stringify(input) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["cases"] }),
@@ -301,6 +307,7 @@ function useStoreData() {
     reports,
     createClient: (input: Omit<Client, "id" | "createdBy">) => createClientMutation.mutateAsync(input),
     updateClient: (id: string, input: Partial<Client>) => updateClientMutation.mutateAsync({ id, ...input }),
+    deleteClient: async (id: string) => { await deleteClientMutation.mutateAsync(id); },
     createCase: (input: Omit<Case, "id" | "clientName" | "createdBy">) => createCaseMutation.mutateAsync(input),
     updateCase: (id: string, input: Partial<Case>) => updateCaseMutation.mutateAsync({ id, ...input }),
     createEvent: (input: Omit<AppEvent, "id" | "clientName" | "caseNumber" | "createdBy" | "cancelled">) => createEventMutation.mutateAsync(input),

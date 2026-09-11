@@ -146,6 +146,18 @@ export async function registerRoutes(
     }
   });
 
+  app.delete("/api/clients/:id", requireAuth, async (req, res) => {
+    try {
+      const existing = await storage.getClient(req.session.accountId!, req.params.id);
+      if (!existing) return res.status(404).json({ error: "Client not found" });
+      await storage.deleteClient(req.session.accountId!, req.params.id);
+      res.json({ ok: true });
+    } catch (err: any) {
+      console.error("Delete client error:", err);
+      res.status(500).json({ error: "Error al eliminar cliente" });
+    }
+  });
+
   app.get("/api/cases", requireAuth, async (req, res) => {
     const cases = await storage.getAllCases(req.session.accountId!);
     res.json(cases);

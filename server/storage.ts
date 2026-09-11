@@ -21,6 +21,7 @@ export interface IStorage {
   getClient(accountId: string, id: string): Promise<schema.Client | undefined>;
   createClient(input: schema.InsertClient): Promise<schema.Client>;
   updateClient(accountId: string, id: string, input: Partial<schema.InsertClient>): Promise<schema.Client>;
+  deleteClient(accountId: string, id: string): Promise<void>;
 
   getAllCases(accountId: string): Promise<schema.Case[]>;
   getCase(accountId: string, id: string): Promise<schema.Case | undefined>;
@@ -103,6 +104,10 @@ export class DbStorage implements IStorage {
   async updateClient(accountId: string, id: string, input: Partial<schema.InsertClient>): Promise<schema.Client> {
     const rows = await db.update(schema.clients).set(input).where(and(eq(schema.clients.id, id), eq(schema.clients.accountId, accountId))).returning();
     return rows[0];
+  }
+
+  async deleteClient(accountId: string, id: string): Promise<void> {
+    await db.delete(schema.clients).where(and(eq(schema.clients.id, id), eq(schema.clients.accountId, accountId)));
   }
 
   async getAllCases(accountId: string): Promise<schema.Case[]> {

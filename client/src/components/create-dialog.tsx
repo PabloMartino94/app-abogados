@@ -90,6 +90,7 @@ export function CreateDialog({ open, onOpenChange, kind, onCreated }: Props) {
   const [showInlineClient, setShowInlineClient] = useState(false);
   const [inlineClientName, setInlineClientName] = useState("");
   const [useConfigNotification, setUseConfigNotification] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const title = useMemo(() => {
     if (kind === "client") return "Nuevo cliente";
@@ -129,6 +130,10 @@ export function CreateDialog({ open, onOpenChange, kind, onCreated }: Props) {
   }, [watchedClientId, activeCases]);
 
   useEffect(() => {
+    if (!open) setIsSubmitting(false);
+  }, [open]);
+
+  useEffect(() => {
     if (kind !== "event") return;
     if (useConfigNotification) {
       const configValue = store.notificationSettings[watchedEventType as keyof typeof store.notificationSettings];
@@ -166,21 +171,28 @@ export function CreateDialog({ open, onOpenChange, kind, onCreated }: Props) {
     setShowInlineClient(false);
     setInlineClientName("");
     setUseConfigNotification(true);
+    setIsSubmitting(false);
   }
 
   async function onSubmitClient(values: ClientValues) {
-    await store.createClient({
-      name: values.name || "",
-      doc: values.doc || "",
-      email: values.email || "",
-      phone: values.phone || "",
-      address: values.address || "",
-      notes: values.notes || "",
-      blacklist: Boolean(values.blacklist),
-    });
-    clientForm.reset();
-    close();
-    onCreated?.();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      await store.createClient({
+        name: values.name || "",
+        doc: values.doc || "",
+        email: values.email || "",
+        phone: values.phone || "",
+        address: values.address || "",
+        notes: values.notes || "",
+        blacklist: Boolean(values.blacklist),
+      });
+      clientForm.reset();
+      close();
+      onCreated?.();
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   async function handleCreateInlineClient(): Promise<string> {
@@ -199,38 +211,50 @@ export function CreateDialog({ open, onOpenChange, kind, onCreated }: Props) {
   }
 
   async function onSubmitCase(values: CaseValues) {
-    let clientId = values.clientId || "";
-    if (showInlineClient && inlineClientName.trim()) {
-      clientId = await handleCreateInlineClient();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      let clientId = values.clientId || "";
+      if (showInlineClient && inlineClientName.trim()) {
+        clientId = await handleCreateInlineClient();
+      }
+      await store.createCase({
+        number: values.number,
+        fuero: values.fuero as Fuero,
+        court: values.court || "",
+        status: values.status as CaseStatus,
+        clientId,
+        startDate: values.startDate,
+        notes: values.notes || "",
+      });
+      caseForm.reset();
+      close();
+      onCreated?.();
+    } finally {
+      setIsSubmitting(false);
     }
-    await store.createCase({
-      number: values.number,
-      fuero: values.fuero as Fuero,
-      court: values.court || "",
-      status: values.status as CaseStatus,
-      clientId,
-      startDate: values.startDate,
-      notes: values.notes || "",
-    });
-    caseForm.reset();
-    close();
-    onCreated?.();
   }
 
   async function onSubmitEvent(values: EventValues) {
-    await store.createEvent({
-      type: values.type as EventType,
-      date: values.date,
-      time: values.time,
-      duration: values.duration as Duration,
-      caseId: values.caseId || "",
-      clientId: values.clientId || "",
-      desc: values.desc || "",
-      leadMinutes: values.leadMinutes as NotificationLeadMinutes,
-    });
-    eventForm.reset();
-    close();
-    onCreated?.();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      await store.createEvent({
+        type: values.type as EventType,
+        date: values.date,
+        time: values.time,
+        duration: values.duration as Duration,
+        caseId: values.caseId || "",
+        clientId: values.clientId || "",
+        desc: values.desc || "",
+        leadMinutes: values.leadMinutes as NotificationLeadMinutes,
+      });
+      eventForm.reset();
+      close();
+      onCreated?.();
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -354,10 +378,10 @@ export function CreateDialog({ open, onOpenChange, kind, onCreated }: Props) {
                   />
 
                   <div className="mt-2 grid grid-cols-2 gap-2">
-                    <Button type="submit" className="rounded-2xl" data-testid="button-submit-new-client">
-                      Guardar
+                    <Button type="submit" className="rounded-2xl" disabled={isSubmitting} data-testid="button-submit-new-client">
+                      {isSubmitting ? "Guardando…" : "Guardar"}
                     </Button>
-                    <Button type="button" variant="outline" className="rounded-2xl" onClick={close} data-testid="button-cancel-new-client">
+                    <Button type="button" variant="outline" className="rounded-2xl" onClick={close} disabled={isSubmitting} data-testid="button-cancel-new-client">
                       Cancelar
                     </Button>
                   </div>
@@ -546,12 +570,12 @@ export function CreateDialog({ open, onOpenChange, kind, onCreated }: Props) {
                     <Button
                       type="submit"
                       className="rounded-2xl"
-                      disabled={!caseForm.formState.isValid && !showInlineClient}
+                      disabled={isSubmitting || (!caseForm.formState.isValid && !showInlineClient)}
                       data-testid="button-submit-new-case"
                     >
-                      Guardar
+                      {isSubmitting ? "Guardando…" : "Guardar"}
                     </Button>
-                    <Button type="button" variant="outline" className="rounded-2xl" onClick={close} data-testid="button-cancel-new-case">
+                    <Button type="button" variant="outline" className="rounded-2xl" onClick={close} disabled={isSubmitting} data-testid="button-cancel-new-case">
                       Cancelar
                     </Button>
                   </div>
@@ -760,10 +784,10 @@ export function CreateDialog({ open, onOpenChange, kind, onCreated }: Props) {
                   />
 
                   <div className="mt-2 grid grid-cols-2 gap-2">
-                    <Button type="submit" className="rounded-2xl" data-testid="button-submit-new-event">
-                      Guardar
+                    <Button type="submit" className="rounded-2xl" disabled={isSubmitting} data-testid="button-submit-new-event">
+                      {isSubmitting ? "Guardando…" : "Guardar"}
                     </Button>
-                    <Button type="button" variant="outline" className="rounded-2xl" onClick={close} data-testid="button-cancel-new-event">
+                    <Button type="button" variant="outline" className="rounded-2xl" onClick={close} disabled={isSubmitting} data-testid="button-cancel-new-event">
                       Cancelar
                     </Button>
                   </div>

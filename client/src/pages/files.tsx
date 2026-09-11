@@ -39,9 +39,11 @@ export default function FilesPage() {
   const [filterFuero, setFilterFuero] = useState<string>("all");
 
   const [showUpload, setShowUpload] = useState(false);
-  const [uploadFile, setUploadFile] = useState<globalThis.File | null>(null);
+  const [uploadFiles, setUploadFiles] = useState<globalThis.File[]>([]);
   const [uploadCaseId, setUploadCaseId] = useState<string>("");
   const [uploadDesc, setUploadDesc] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null);
 
   const caseMap = useMemo(() => {
     const map = new Map<string, typeof store.cases[0]>();
@@ -74,18 +76,33 @@ export default function FilesPage() {
   }, [store.files, filterType, filterStatus, filterFuero, search, caseMap]);
 
   async function handleUpload() {
-    if (!uploadFile || !uploadCaseId) return;
-    await store.createFile({
-      file: uploadFile,
-      name: uploadFile.name,
-      type: inferType(uploadFile.name),
-      caseId: uploadCaseId,
-      desc: uploadDesc,
-    });
-    setUploadFile(null);
-    setUploadCaseId("");
-    setUploadDesc("");
-    setShowUpload(false);
+    if (uploadFiles.length === 0 || !uploadCaseId || uploading) return;
+    setUploading(true);
+    setUploadProgress({ done: 0, total: uploadFiles.length });
+    try {
+      for (let i = 0; i < uploadFiles.length; i++) {
+        const f = uploadFiles[i];
+        await store.createFile({
+          file: f,
+          name: f.name,
+          type: inferType(f.name),
+          caseId: uploadCaseId,
+          desc: uploadDesc,
+        });
+        setUploadProgress({ done: i + 1, total: uploadFiles.length });
+      }
+      setUploadFiles([]);
+      setUploadCaseId("");
+      setUploadDesc("");
+      setShowUpload(false);
+    } finally {
+      setUploading(false);
+      setUploadProgress(null);
+    }
+  }
+
+  function removeUploadFile(index: number) {
+    setUploadFiles((prev) => prev.filter((_, i) => i !== index));
   }
 
   return (
@@ -118,15 +135,33 @@ export default function FilesPage() {
             </div>
             <div className="mt-3 grid gap-3">
               <div className="grid gap-2">
-                <label className="text-xs font-semibold text-muted-foreground">Archivo</label>
+                <label className="text-xs font-semibold text-muted-foreground">Archivos (podés seleccionar varios)</label>
                 <Input
                   type="file"
-                  onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
+                  multiple
+                  onChange={(e) => setUploadFiles((prev) => [...prev, ...Array.from(e.target.files ?? [])])}
                   data-testid="input-file"
                 />
-                {uploadFile && (
-                  <div className="text-xs text-muted-foreground" data-testid="text-file-selected">
-                    Seleccionado: {uploadFile.name}
+                {uploadFiles.length > 0 && (
+                  <div className="grid gap-1" data-testid="text-file-selected">
+                    {uploadFiles.map((f, i) => (
+                      <div
+                        key={`${f.name}-${i}`}
+                        className="flex items-center justify-between rounded-xl border bg-white/50 px-2.5 py-1.5 text-xs text-muted-foreground"
+                        data-testid={`row-selected-file-${i}`}
+                      >
+                        <span className="truncate">{f.name}</span>
+                        <button
+                          type="button"
+                          className="ml-2 shrink-0 text-red-500 hover:text-red-600"
+                          onClick={() => removeUploadFile(i)}
+                          disabled={uploading}
+                          data-testid={`button-remove-selected-file-${i}`}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -161,11 +196,15 @@ export default function FilesPage() {
               <Button
                 className="rounded-2xl"
                 onClick={handleUpload}
-                disabled={!uploadFile || !uploadCaseId}
+                disabled={uploadFiles.length === 0 || !uploadCaseId || uploading}
                 data-testid="button-upload"
               >
                 <FileUp className="mr-1.5 h-4 w-4" />
-                Subir
+                {uploading
+                  ? `Subiendo ${uploadProgress?.done ?? 0} de ${uploadProgress?.total ?? uploadFiles.length}…`
+                  : uploadFiles.length > 1
+                    ? `Subir ${uploadFiles.length} archivos`
+                    : "Subir"}
               </Button>
             </div>
           </Card>

@@ -53,6 +53,8 @@ export default function SettingsPage() {
   const editSubjectRef = useRef<HTMLInputElement>(null);
   const editContentRef = useRef<HTMLTextAreaElement>(null);
   const editLastFocused = useRef<"subject" | "content">("content");
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [savingEditTemplate, setSavingEditTemplate] = useState(false);
 
   const templateVariables = ["{{cliente}}", "{{dni}}", "{{fecha}}", "{{expediente}}"];
 
@@ -121,14 +123,19 @@ export default function SettingsPage() {
   }
 
   async function handleCreateEmailTemplate() {
-    if (!emailName.trim()) return;
-    await store.createEmailTemplate({
-      name: emailName,
-      type: emailType,
-      subject: emailSubject,
-      content: emailContent,
-    });
-    resetCreateForm();
+    if (!emailName.trim() || savingTemplate) return;
+    setSavingTemplate(true);
+    try {
+      await store.createEmailTemplate({
+        name: emailName,
+        type: emailType,
+        subject: emailSubject,
+        content: emailContent,
+      });
+      resetCreateForm();
+    } finally {
+      setSavingTemplate(false);
+    }
   }
 
   function startEditTemplate(t: { id: string; name: string; type: string; subject: string; content: string }) {
@@ -140,14 +147,19 @@ export default function SettingsPage() {
   }
 
   async function saveEditTemplate() {
-    if (!editingTemplateId || !editName.trim()) return;
-    await store.updateEmailTemplate(editingTemplateId, {
-      name: editName,
-      type: editType,
-      subject: editSubject,
-      content: editContent,
-    });
-    setEditingTemplateId(null);
+    if (!editingTemplateId || !editName.trim() || savingEditTemplate) return;
+    setSavingEditTemplate(true);
+    try {
+      await store.updateEmailTemplate(editingTemplateId, {
+        name: editName,
+        type: editType,
+        subject: editSubject,
+        content: editContent,
+      });
+      setEditingTemplateId(null);
+    } finally {
+      setSavingEditTemplate(false);
+    }
   }
 
   async function handleDeleteTemplate(id: string) {
@@ -506,9 +518,10 @@ export default function SettingsPage() {
                   <Button
                     className="rounded-2xl"
                     onClick={handleCreateEmailTemplate}
+                    disabled={savingTemplate}
                     data-testid="button-submit-create-email-template"
                   >
-                    Guardar
+                    {savingTemplate ? "Guardando…" : "Guardar"}
                   </Button>
                 </div>
               </div>
@@ -589,8 +602,8 @@ export default function SettingsPage() {
                           data-testid={`textarea-edit-content-${t.id}`}
                         />
                       </div>
-                      <Button className="rounded-2xl" onClick={saveEditTemplate} data-testid={`button-save-edit-${t.id}`}>
-                        Guardar cambios
+                      <Button className="rounded-2xl" onClick={saveEditTemplate} disabled={savingEditTemplate} data-testid={`button-save-edit-${t.id}`}>
+                        {savingEditTemplate ? "Guardando…" : "Guardar cambios"}
                       </Button>
                     </div>
                   ) : (
