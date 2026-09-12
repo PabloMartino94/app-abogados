@@ -8,6 +8,8 @@ import path from "path";
 import { uploadFile, downloadFile, deleteFile } from "./fileStorage";
 import { sendReportNotification } from "./mailer";
 import { buildDocData, generateDocx, describeTemplateError, DOCX_MIME } from "./docGenerator";
+import { draftDocument, isAiConfigured, type DraftTurn, type DraftDocument } from "./ai";
+import { buildDocxFromDraft, type Branding } from "./docBuilder";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -110,6 +112,96 @@ export async function registerRoutes(
       user: { id: user.id, name: user.name, email: user.email, role: user.role },
       account: { id: account?.id, firmName: account?.firmName },
     });
+  });
+
+  app.get("/api/account", requireAuth, async (req, res) => {
+    const account = await storage.getAccount(req.session.accountId!);
+    if (!account) return res.status(404).json({ error: "Cuenta no encontrada" });
+    res.json({
+      id: account.id,
+      firmName: account.firmName,
+      logoPath: account.logoPath,
+      letterheadAddress: account.letterheadAddress,
+      aiEnabled: isAiConfigured(),
+    });
+  });
+
+  app.put("/api/account/branding", requireAuth, upload.single("logo"), async (req, res) => {
+    try {
+      const accountId = req.session.accountId!;
+      const account = await storage.getAccount(accountId);
+      if (!account) return res.status(404).json({ error: "Cuenta no encontrada" });
+
+      const update: { letterheadAddress?: string; logoPath?: string } = {};
+
+      if (typeof req.body?.letterheadAddress === "string") {
+        update.letterheadAddress = req.body.letterheadAddress;
+      }
+
+      const uploaded = req.file;
+      if (uploaded) {
+        const ext = path.extname(uploaded.originalname).toLowerCase();
+        if (![".png", ".jpg", ".jpeg"].includes(ext)) {
+          return res.status(400).json({ error: "El logo tiene que ser una imagen PNG o JPG" });
+        }
+        const unique = Date.now() + "-" + Math.round(Math.random() * 1e9);
+        const key = `${accountId}/membrete/${unique}${ext}`;
+        await uploadFile(key, uploaded.buffer, uploaded.mimetype || "image/png");
+        update.logoPath = key;
+        if (account.logoPath) {
+          try {
+            await deleteFile(account.logoPath);
+          } catch (err: any) {
+            console.error("Delete old logo error:", err);
+          }
+        }
+      }
+
+      const updated = await storage.updateAccount(accountId, update);
+      res.json({
+        id: updated.id,
+        firmName: updated.firmName,
+        logoPath: updated.logoPath,
+        letterheadAddress: updated.letterheadAddress,
+        aiEnabled: isAiConfigured(),
+      });
+    } catch (err: any) {
+      console.error("Update branding error:", err);
+      res.status(500).json({ error: "Error al guardar el membrete" });
+    }
+  });
+
+  app.get("/api/account/logo", requireAuth, async (req, res) => {
+    const account = await storage.getAccount(req.session.accountId!);
+    if (!account?.logoPath) return res.status(404).json({ error: "No hay logo cargado" });
+    try {
+      const { buffer, contentType } = await downloadFile(account.logoPath);
+      res.setHeader("Content-Type", contentType);
+      res.send(buffer);
+    } catch (err: any) {
+      console.error("Logo download error:", err);
+      res.status(404).json({ error: "No se pudo leer el logo" });
+    }
+  });
+
+  app.post("/api/ai/draft", requireAuth, async (req, res) => {
+    try {
+      const turns = req.body?.turns;
+      if (!Array.isArray(turns) || turns.length === 0) {
+        return res.status(400).json({ error: "Falta la conversación" });
+      }
+      const clean: DraftTurn[] = turns
+        .filter((t: any) => (t?.role === "abogado" || t?.role === "asistente") && typeof t?.text === "string")
+        .map((t: any) => ({ role: t.role, text: t.text }));
+      if (clean.length === 0) {
+        return res.status(400).json({ error: "Falta la conversación" });
+      }
+      const result = await draftDocument(clean);
+      res.json(result);
+    } catch (err: any) {
+      console.error("AI draft error:", err);
+      res.status(500).json({ error: err?.message || "El asistente no pudo responder" });
+    }
   });
 
   app.get("/api/users", requireAuth, async (req, res) => {
@@ -306,8 +398,12 @@ export async function registerRoutes(
   app.post("/api/doc-templates", requireAuth, upload.single("file"), async (req, res) => {
     try {
       const { name, type, content } = req.body;
+      const source = req.body?.source === "ia" ? "ia" : "upload";
       if (!name || !type) {
         return res.status(400).json({ error: "Faltan el nombre o el tipo de plantilla" });
+      }
+      if (source === "ia" && !content) {
+        return res.status(400).json({ error: "Falta el contenido del documento redactado" });
       }
 
       let filePath = "";
@@ -329,6 +425,7 @@ export async function registerRoutes(
         accountId: req.session.accountId!,
         name,
         type,
+        source,
         content: content || "",
         filePath,
         fileName,
@@ -364,7 +461,7 @@ export async function registerRoutes(
       const accountId = req.session.accountId!;
       const template = await storage.getDocTemplate(accountId, req.params.id);
       if (!template) return res.status(404).json({ error: "Template not found" });
-      if (!template.filePath) {
+      if (template.source !== "ia" && !template.filePath) {
         return res.status(400).json({ error: "Esta plantilla no tiene un archivo .docx cargado" });
       }
 
@@ -383,7 +480,6 @@ export async function registerRoutes(
       const account = await storage.getAccount(accountId);
       const user = await storage.getUserById(req.session.userId!);
 
-      const { buffer: templateBuffer } = await downloadFile(template.filePath);
       const data = buildDocData({
         client,
         caseRecord,
@@ -392,11 +488,49 @@ export async function registerRoutes(
       });
 
       let output: Buffer;
-      try {
-        output = await generateDocx(templateBuffer, data);
-      } catch (err: any) {
-        console.error("Template render error:", err);
-        return res.status(400).json({ error: describeTemplateError(err) });
+      if (template.source === "ia") {
+        // Documento redactado por el asistente: se arma acá, con el membrete
+        // del estudio y el formato del estudio (Garamond, márgenes de 3 cm).
+        let draft: DraftDocument;
+        try {
+          draft = JSON.parse(template.content);
+        } catch {
+          return res.status(400).json({ error: "El contenido de esta plantilla está dañado" });
+        }
+
+        let logo: Branding["logo"] = null;
+        if (account?.logoPath) {
+          try {
+            const { buffer } = await downloadFile(account.logoPath);
+            const isJpg = /\.jpe?g$/i.test(account.logoPath);
+            logo = { data: buffer, type: isJpg ? "jpg" : "png" };
+          } catch (err: any) {
+            console.error("Logo read error:", err);
+          }
+        }
+
+        try {
+          output = await buildDocxFromDraft(
+            draft,
+            {
+              firmName: account?.firmName ?? "",
+              addressLine: account?.letterheadAddress ?? "",
+              logo,
+            },
+            data
+          );
+        } catch (err: any) {
+          console.error("Build docx error:", err);
+          return res.status(500).json({ error: "No se pudo armar el documento" });
+        }
+      } else {
+        const { buffer: templateBuffer } = await downloadFile(template.filePath);
+        try {
+          output = await generateDocx(templateBuffer, data);
+        } catch (err: any) {
+          console.error("Template render error:", err);
+          return res.status(400).json({ error: describeTemplateError(err) });
+        }
       }
 
       const label = caseRecord?.number ? `${template.name} - ${caseRecord.number}` : template.name;

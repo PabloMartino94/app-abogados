@@ -11,6 +11,7 @@ export { pool };
 export interface IStorage {
   createAccount(input: schema.InsertAccount): Promise<schema.Account>;
   getAccount(id: string): Promise<schema.Account | undefined>;
+  updateAccount(id: string, input: Partial<schema.InsertAccount>): Promise<schema.Account>;
 
   createUser(input: schema.InsertUser): Promise<schema.User>;
   getUserByEmail(email: string): Promise<schema.User | undefined>;
@@ -67,6 +68,11 @@ export class DbStorage implements IStorage {
 
   async getAccount(id: string): Promise<schema.Account | undefined> {
     const rows = await db.select().from(schema.accounts).where(eq(schema.accounts.id, id));
+    return rows[0];
+  }
+
+  async updateAccount(id: string, input: Partial<schema.InsertAccount>): Promise<schema.Account> {
+    const rows = await db.update(schema.accounts).set(input).where(eq(schema.accounts.id, id)).returning();
     return rows[0];
   }
 

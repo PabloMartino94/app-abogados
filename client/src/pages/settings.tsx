@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useLocation } from "wouter";
-import { LogOut, Pencil, ShieldCheck, Trash2, UserPlus, BellRing, Mail, Plus, Variable, X, MessageSquareWarning, FileText } from "lucide-react";
+import { LogOut, Pencil, ShieldCheck, Trash2, UserPlus, BellRing, Mail, Plus, Variable, X, MessageSquareWarning, FileText, Stamp } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -55,6 +55,30 @@ export default function SettingsPage() {
   const editLastFocused = useRef<"subject" | "content">("content");
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [savingEditTemplate, setSavingEditTemplate] = useState(false);
+
+  const [logoFile, setLogoFile] = useState<globalThis.File | null>(null);
+  const [addressLine, setAddressLine] = useState<string | null>(null);
+  const [savingBranding, setSavingBranding] = useState(false);
+  const [brandingNotice, setBrandingNotice] = useState("");
+
+  const account = store.account;
+  const addressValue = addressLine ?? account?.letterheadAddress ?? "";
+
+  async function handleSaveBranding() {
+    if (savingBranding) return;
+    setBrandingNotice("");
+    setSavingBranding(true);
+    try {
+      await store.updateBranding({ letterheadAddress: addressValue, logo: logoFile });
+      setLogoFile(null);
+      setAddressLine(null);
+      setBrandingNotice("Membrete guardado.");
+    } catch (err: any) {
+      setBrandingNotice(err?.message || "No se pudo guardar el membrete.");
+    } finally {
+      setSavingBranding(false);
+    }
+  }
 
   const templateVariables = ["{{cliente}}", "{{dni}}", "{{fecha}}", "{{expediente}}"];
 
@@ -236,6 +260,74 @@ export default function SettingsPage() {
                 data-testid="button-save-profile"
               >
                 Guardar
+              </Button>
+            </div>
+          </Card>
+
+          <Card className="app-card rounded-3xl p-4">
+            <div className="flex items-center gap-2">
+              <Stamp className="h-4 w-4 text-primary" />
+              <div className="text-sm font-semibold" data-testid="text-branding-title">
+                Membrete del estudio
+              </div>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground" data-testid="text-branding-desc">
+              Se carga una vez y se usa en todos los documentos que genera la app.
+            </p>
+
+            {brandingNotice && (
+              <div
+                className="mt-3 rounded-2xl border bg-white/60 px-3 py-2 text-xs"
+                data-testid="text-branding-notice"
+              >
+                {brandingNotice}
+              </div>
+            )}
+
+            <div className="mt-3 grid gap-3">
+              {account?.logoPath && !logoFile && (
+                <div className="flex items-center gap-3 rounded-2xl border bg-white/50 px-3 py-2">
+                  <img
+                    src="/api/account/logo"
+                    alt="Logo del estudio"
+                    className="h-12 w-12 rounded-lg object-contain"
+                    data-testid="img-current-logo"
+                  />
+                  <span className="text-xs text-muted-foreground">Logo cargado</span>
+                </div>
+              )}
+
+              <div className="grid gap-2">
+                <label className="text-xs font-semibold text-muted-foreground">
+                  Logo del estudio (PNG o JPG)
+                </label>
+                <Input
+                  type="file"
+                  accept=".png,.jpg,.jpeg"
+                  onChange={(e) => setLogoFile(e.target.files?.[0] ?? null)}
+                  data-testid="input-logo"
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <label className="text-xs font-semibold text-muted-foreground">
+                  Línea de dirección
+                </label>
+                <Input
+                  value={addressValue}
+                  onChange={(e) => setAddressLine(e.target.value)}
+                  placeholder="Ej: Santa Cruz 560 Cdad. de Mendoza Argentina C.P. 5500"
+                  data-testid="input-letterhead-address"
+                />
+              </div>
+
+              <Button
+                className="rounded-2xl"
+                onClick={handleSaveBranding}
+                disabled={savingBranding}
+                data-testid="button-save-branding"
+              >
+                {savingBranding ? "Guardando…" : "Guardar membrete"}
               </Button>
             </div>
           </Card>

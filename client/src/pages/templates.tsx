@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft, FileText, Plus, Trash2, Upload, Wand2, X } from "lucide-react";
+import { ArrowLeft, FileText, Plus, Sparkles, Trash2, Upload, Wand2, X } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -34,7 +34,10 @@ export default function TemplatesPage() {
   const [notice, setNotice] = useState("");
 
   const templates = store.docTemplates;
-  const usableTemplates = useMemo(() => templates.filter((t) => t.filePath), [templates]);
+  const usableTemplates = useMemo(
+    () => templates.filter((t) => t.filePath || t.source === "ia"),
+    [templates],
+  );
 
   const selectedCase = useMemo(
     () => store.cases.find((c) => c.id === caseId) ?? null,
@@ -157,6 +160,25 @@ export default function TemplatesPage() {
             {notice}
           </div>
         )}
+
+        <Card className="app-card mt-4 rounded-3xl p-4" data-testid="card-redactar-entry">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-primary" />
+            <div className="text-sm font-semibold">Redactar con el asistente</div>
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Contale qué documento necesitás y te lo redacta, preguntándote lo que falte. Queda guardado como
+            plantilla reutilizable.
+          </p>
+          <Button
+            className="mt-3 w-full rounded-2xl"
+            onClick={() => setLocation("/app/redactar")}
+            data-testid="button-open-redactar"
+          >
+            <Sparkles className="mr-1.5 h-4 w-4" />
+            Empezar a redactar
+          </Button>
+        </Card>
 
         {showUpload && (
           <Card className="app-card mt-4 rounded-3xl p-4" data-testid="card-upload-template">
@@ -325,7 +347,9 @@ export default function TemplatesPage() {
                   <div className="truncate text-sm font-semibold">{t.name}</div>
                   <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                     <Badge variant="outline" className="px-1.5 py-0 text-[10px]">{t.type}</Badge>
-                    {t.fileName ? (
+                    {t.source === "ia" ? (
+                      <span className="text-primary">Redactada por el asistente</span>
+                    ) : t.fileName ? (
                       <span className="truncate">{t.fileName}</span>
                     ) : (
                       <span className="text-amber-600">Sin archivo .docx</span>

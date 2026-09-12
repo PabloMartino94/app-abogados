@@ -70,9 +70,40 @@ export type DocTemplate = {
   id: string;
   name: string;
   type: TemplateType;
+  source: "upload" | "ia";
   content: string;
   filePath: string;
   fileName: string;
+};
+
+export type AccountInfo = {
+  id: string;
+  firmName: string;
+  logoPath: string;
+  letterheadAddress: string;
+  aiEnabled: boolean;
+};
+
+export type DraftTurn = {
+  role: "abogado" | "asistente";
+  text: string;
+};
+
+export type DraftSection = {
+  titulo: string;
+  parrafos: string[];
+};
+
+export type DraftDocument = {
+  titulo: string;
+  secciones: DraftSection[];
+};
+
+export type DraftResult = {
+  estado: "preguntas" | "borrador";
+  mensaje: string;
+  preguntas?: string[];
+  documento?: DraftDocument;
 };
 
 export type EmailTemplateType = "Recordatorio" | "Notificación" | "Seguimiento";

@@ -6,6 +6,9 @@ import { z } from "zod";
 export const accounts = pgTable("accounts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   firmName: text("firm_name").notNull(),
+  // Membrete del estudio: se carga una vez y se hereda en todo lo que se genera.
+  logoPath: text("logo_path").notNull().default(""),
+  letterheadAddress: text("letterhead_address").notNull().default(""),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -100,6 +103,9 @@ export const docTemplates = pgTable("doc_templates", {
   accountId: varchar("account_id").notNull(),
   name: text("name").notNull(),
   type: text("type").notNull(),
+  // "upload": el estudio subió un .docx. "ia": lo redactó el asistente y
+  // `content` guarda el documento estructurado en JSON.
+  source: text("source").notNull().default("upload"),
   content: text("content").notNull().default(""),
   // Plantilla .docx subida por el estudio (guardada en Supabase Storage).
   filePath: text("file_path").notNull().default(""),

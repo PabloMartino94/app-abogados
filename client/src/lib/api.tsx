@@ -1,6 +1,6 @@
 import { createContext, PropsWithChildren, useContext, useMemo } from "react";
 import { QueryClient, QueryClientProvider, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { AppEvent, AppFile, Case, CaseStatus, Client, DocTemplate, EmailTemplate, Fuero, NotificationSettings, Report, ReportKind, ReportPriority, ReportStatus } from "@/lib/types";
+import type { AccountInfo, AppEvent, AppFile, Case, CaseStatus, Client, DocTemplate, DraftResult, DraftTurn, EmailTemplate, Fuero, NotificationSettings, Report, ReportKind, ReportPriority, ReportStatus } from "@/lib/types";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -29,7 +29,10 @@ type StoreApi = {
   createEvent: (input: Omit<AppEvent, "id" | "clientName" | "caseNumber" | "createdBy" | "cancelled">) => Promise<AppEvent>;
   updateEvent: (id: string, input: Partial<AppEvent & { cancelled: boolean }>) => Promise<AppEvent>;
   createFile: (input: Omit<AppFile, "id" | "date" | "caseNumber" | "filePath"> & { file?: globalThis.File | null }) => Promise<AppFile>;
-  createDocTemplate: (input: { name: string; type: DocTemplate["type"]; content?: string; file?: globalThis.File | null }) => Promise<DocTemplate>;
+  account: AccountInfo | null;
+  updateBranding: (input: { letterheadAddress?: string; logo?: globalThis.File | null }) => Promise<AccountInfo>;
+  draftWithAi: (turns: DraftTurn[]) => Promise<DraftResult>;
+  createDocTemplate: (input: { name: string; type: DocTemplate["type"]; source?: "upload" | "ia"; content?: string; file?: globalThis.File | null }) => Promise<DocTemplate>;
   deleteDocTemplate: (id: string) => Promise<void>;
   generateDocument: (input: { templateId: string; caseId?: string; saveToCase?: boolean }) => Promise<{ blob: Blob; filename: string }>;
   createEmailTemplate: (input: Omit<EmailTemplate, "id">) => Promise<EmailTemplate>;
@@ -139,6 +142,11 @@ function useStoreData() {
   const { data: docTemplates = [] } = useQuery({
     queryKey: ["doc-templates"],
     queryFn: () => fetchJson<DocTemplate[]>("/api/doc-templates"),
+  });
+
+  const { data: account = null } = useQuery({
+    queryKey: ["account"],
+    queryFn: () => fetchJson<AccountInfo>("/api/account"),
   });
 
   const { data: emailTemplates = [] } = useQuery({
@@ -259,11 +267,31 @@ function useStoreData() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["files"] }),
   });
 
+  const updateBrandingMutation = useMutation({
+    mutationFn: async (input: { letterheadAddress?: string; logo?: globalThis.File | null }) => {
+      const formData = new FormData();
+      if (typeof input.letterheadAddress === "string") {
+        formData.append("letterheadAddress", input.letterheadAddress);
+      }
+      if (input.logo) formData.append("logo", input.logo);
+      const res = await fetch("/api/account/branding", { method: "PUT", body: formData, credentials: "include" });
+      if (!res.ok) throw new Error(await errorMessage(res));
+      return res.json() as Promise<AccountInfo>;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["account"] }),
+  });
+
+  const draftWithAiMutation = useMutation({
+    mutationFn: (turns: DraftTurn[]) =>
+      fetchJson<DraftResult>("/api/ai/draft", { method: "POST", body: JSON.stringify({ turns }) }),
+  });
+
   const createDocTemplateMutation = useMutation({
-    mutationFn: async (input: { name: string; type: DocTemplate["type"]; content?: string; file?: globalThis.File | null }) => {
+    mutationFn: async (input: { name: string; type: DocTemplate["type"]; source?: "upload" | "ia"; content?: string; file?: globalThis.File | null }) => {
       const formData = new FormData();
       formData.append("name", input.name);
       formData.append("type", input.type);
+      formData.append("source", input.source || "upload");
       formData.append("content", input.content || "");
       if (input.file) formData.append("file", input.file);
       const res = await fetch("/api/doc-templates", { method: "POST", body: formData, credentials: "include" });
@@ -370,7 +398,10 @@ function useStoreData() {
     createEvent: (input: Omit<AppEvent, "id" | "clientName" | "caseNumber" | "createdBy" | "cancelled">) => createEventMutation.mutateAsync(input),
     updateEvent: (id: string, input: Partial<AppEvent & { cancelled: boolean }>) => updateEventMutation.mutateAsync({ id, ...input }),
     createFile: (input: Omit<AppFile, "id" | "date" | "caseNumber" | "filePath"> & { file?: globalThis.File | null }) => createFileMutation.mutateAsync(input),
-    createDocTemplate: (input: { name: string; type: DocTemplate["type"]; content?: string; file?: globalThis.File | null }) => createDocTemplateMutation.mutateAsync(input),
+    account,
+    updateBranding: (input: { letterheadAddress?: string; logo?: globalThis.File | null }) => updateBrandingMutation.mutateAsync(input),
+    draftWithAi: (turns: DraftTurn[]) => draftWithAiMutation.mutateAsync(turns),
+    createDocTemplate: (input: { name: string; type: DocTemplate["type"]; source?: "upload" | "ia"; content?: string; file?: globalThis.File | null }) => createDocTemplateMutation.mutateAsync(input),
     deleteDocTemplate: async (id: string) => { await deleteDocTemplateMutation.mutateAsync(id); },
     generateDocument: (input: { templateId: string; caseId?: string; saveToCase?: boolean }) => generateDocumentMutation.mutateAsync(input),
     createEmailTemplate: (input: Omit<EmailTemplate, "id">) => createEmailTemplateMutation.mutateAsync(input),
