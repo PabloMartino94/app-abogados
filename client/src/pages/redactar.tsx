@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft, FileText, Save, Sparkles } from "lucide-react";
+import { ArrowLeft, FileText, RefreshCw, Save, Sparkles } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -51,22 +51,18 @@ export default function RedactarPage() {
 
   const aiEnabled = store.account?.aiEnabled ?? true;
 
-  async function send(text: string) {
-    const message = text.trim();
-    if (!message || thinking) return;
+  async function ask(conversation: DraftTurn[]) {
+    if (thinking) return;
     setError("");
-    const nextTurns: DraftTurn[] = [...turns, { role: "abogado", text: message }];
-    setTurns(nextTurns);
-    setInput("");
     setThinking(true);
     try {
-      const result = await store.draftWithAi(nextTurns);
+      const result = await store.draftWithAi(conversation);
 
       if (result.estado === "borrador" && result.documento) {
         setDraft(result.documento);
         if (!name) setName(result.documento.titulo);
         setTurns([
-          ...nextTurns,
+          ...conversation,
           {
             role: "asistente",
             text: `${result.mensaje}\n\n[DOCUMENTO REDACTADO]\n${draftToText(result.documento)}`,
@@ -77,14 +73,24 @@ export default function RedactarPage() {
         const body = [result.mensaje, ...preguntas.map((q, i) => `${i + 1}. ${q}`)]
           .filter(Boolean)
           .join("\n");
-        setTurns([...nextTurns, { role: "asistente", text: body }]);
+        setTurns([...conversation, { role: "asistente", text: body }]);
       }
     } catch (err: any) {
       setError(err?.message || "El asistente no pudo responder.");
-      setTurns(nextTurns);
+      // La conversación se conserva para poder reintentar sin reescribir nada.
+      setTurns(conversation);
     } finally {
       setThinking(false);
     }
+  }
+
+  function send(text: string) {
+    const message = text.trim();
+    if (!message || thinking) return;
+    const nextTurns: DraftTurn[] = [...turns, { role: "abogado", text: message }];
+    setTurns(nextTurns);
+    setInput("");
+    void ask(nextTurns);
   }
 
   async function handleSave() {
@@ -144,7 +150,19 @@ export default function RedactarPage() {
             className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-700"
             data-testid="text-redactar-error"
           >
-            {error}
+            <div>{error}</div>
+            {turns.length > 0 && !thinking && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-2 rounded-xl"
+                onClick={() => ask(turns)}
+                data-testid="button-retry-draft"
+              >
+                <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                Reintentar
+              </Button>
+            )}
           </div>
         )}
 

@@ -1,7 +1,17 @@
 import { DOC_VARIABLES } from "../shared/docVariables.js";
 
 const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/interactions";
-const DEFAULT_MODEL = "gemini-3.8-flash";
+
+// Se prueban en orden. La cuota del free tier es por modelo, así que cuando uno
+// está saturado o sin cuota, el siguiente suele responder. Se puede cambiar la
+// lista con la variable GEMINI_MODEL (separada por comas) sin tocar el código.
+const DEFAULT_MODELS = ["gemini-3.8-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite"];
+
+const RETRYABLE_STATUS = new Set([500, 502, 503, 504]);
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 /** Un turno de la conversación entre el abogado y el asistente. */
 export type DraftTurn = {
@@ -155,16 +165,13 @@ export function isAiConfigured(): boolean {
   return Boolean(process.env.GEMINI_API_KEY);
 }
 
-export async function draftDocument(turns: DraftTurn[]): Promise<DraftResult> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error(
-      "Falta configurar la clave de IA (GEMINI_API_KEY) para poder redactar documentos."
-    );
-  }
+type GeminiFailure = { status: number; body: string };
 
-  const model = process.env.GEMINI_MODEL || DEFAULT_MODEL;
-
+async function callGemini(
+  model: string,
+  apiKey: string,
+  transcript: string
+): Promise<{ ok: true; payload: any } | ({ ok: false } & GeminiFailure)> {
   const res = await fetch(GEMINI_ENDPOINT, {
     method: "POST",
     headers: {
@@ -174,25 +181,89 @@ export async function draftDocument(turns: DraftTurn[]): Promise<DraftResult> {
     body: JSON.stringify({
       model,
       system_instruction: SYSTEM_INSTRUCTION,
-      input: buildTranscript(turns),
+      input: transcript,
     }),
   });
 
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    console.error("Gemini API error:", res.status, body);
-    if (res.status === 429) {
-      throw new Error("El asistente alcanzó el límite de uso por ahora. Probá de nuevo en unos minutos.");
+    console.error(`Gemini API error (${model}):`, res.status, body);
+    return { ok: false, status: res.status, body };
+  }
+
+  return { ok: true, payload: await res.json() };
+}
+
+/** Convierte el último error de Google en algo accionable para el abogado. */
+function describeGeminiFailure(failure: GeminiFailure | null): string {
+  if (!failure) return "El asistente no pudo responder.";
+
+  if (failure.status === 429) {
+    const retry = /retry in ([\d.]+)s/i.exec(failure.body);
+    const seconds = retry ? Math.ceil(Number(retry[1])) : null;
+    return seconds
+      ? `El asistente llegó al límite de pedidos por minuto del plan gratuito. Probá de nuevo en unos ${seconds} segundos.`
+      : "El asistente llegó al límite de pedidos del plan gratuito. Probá de nuevo en un minuto.";
+  }
+
+  if (RETRYABLE_STATUS.has(failure.status)) {
+    return "El servicio de IA está saturado en este momento. Probá de nuevo en un minuto.";
+  }
+
+  if (failure.status === 400 || failure.status === 404) {
+    return `El asistente rechazó el pedido (código ${failure.status}). Puede ser que el modelo configurado ya no exista.`;
+  }
+
+  if (failure.status === 401 || failure.status === 403) {
+    return "La clave de IA no es válida o no tiene permisos.";
+  }
+
+  return `El asistente no respondió correctamente (código ${failure.status}).`;
+}
+
+export async function draftDocument(turns: DraftTurn[]): Promise<DraftResult> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error(
+      "Falta configurar la clave de IA (GEMINI_API_KEY) para poder redactar documentos."
+    );
+  }
+
+  const models = (process.env.GEMINI_MODEL || DEFAULT_MODELS.join(","))
+    .split(",")
+    .map((m) => m.trim())
+    .filter(Boolean);
+
+  const transcript = buildTranscript(turns);
+  let lastFailure: GeminiFailure | null = null;
+
+  for (const model of models) {
+    // Un reintento corto por modelo: los 500 de saturación suelen ser pasajeros.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const result = await callGemini(model, apiKey, transcript);
+
+      if (result.ok) {
+        const text = extractText(result.payload);
+        if (!text) {
+          console.error(
+            "Gemini API: respuesta sin texto",
+            JSON.stringify(result.payload).slice(0, 2000)
+          );
+          throw new Error("El asistente devolvió una respuesta vacía.");
+        }
+        return normalizeResult(parseJsonResponse(text));
+      }
+
+      lastFailure = { status: result.status, body: result.body };
+
+      if (RETRYABLE_STATUS.has(result.status) && attempt === 0) {
+        await sleep(1500);
+        continue;
+      }
+      // Sin cuota o error definitivo: se prueba el modelo siguiente.
+      break;
     }
-    throw new Error(`El asistente no respondió correctamente (código ${res.status}).`);
   }
 
-  const payload = await res.json();
-  const text = extractText(payload);
-  if (!text) {
-    console.error("Gemini API: respuesta sin texto", JSON.stringify(payload).slice(0, 2000));
-    throw new Error("El asistente devolvió una respuesta vacía.");
-  }
-
-  return normalizeResult(parseJsonResponse(text));
+  throw new Error(describeGeminiFailure(lastFailure));
 }
