@@ -5,8 +5,9 @@ import * as schema from "../shared/schema.js";
 import bcrypt from "bcryptjs";
 import multer from "multer";
 import path from "path";
-import { uploadFile, downloadFile } from "./fileStorage";
+import { uploadFile, downloadFile, deleteFile } from "./fileStorage";
 import { sendReportNotification } from "./mailer";
+import { buildDocData, generateDocx, describeTemplateError, DOCX_MIME } from "./docGenerator";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -302,11 +303,135 @@ export async function registerRoutes(
     res.json(template);
   });
 
-  app.post("/api/doc-templates", requireAuth, async (req, res) => {
-    const parsed = schema.insertDocTemplateSchema.safeParse({ ...req.body, accountId: req.session.accountId });
-    if (!parsed.success) return res.status(400).json({ error: parsed.error });
-    const template = await storage.createDocTemplate(parsed.data);
-    res.status(201).json(template);
+  app.post("/api/doc-templates", requireAuth, upload.single("file"), async (req, res) => {
+    try {
+      const { name, type, content } = req.body;
+      if (!name || !type) {
+        return res.status(400).json({ error: "Faltan el nombre o el tipo de plantilla" });
+      }
+
+      let filePath = "";
+      let fileName = "";
+      const uploaded = req.file;
+      if (uploaded) {
+        const ext = path.extname(uploaded.originalname).toLowerCase();
+        if (ext !== ".docx") {
+          return res.status(400).json({ error: "La plantilla tiene que ser un archivo .docx" });
+        }
+        const unique = Date.now() + "-" + Math.round(Math.random() * 1e9);
+        const key = `${req.session.accountId}/plantillas/${unique}.docx`;
+        await uploadFile(key, uploaded.buffer, uploaded.mimetype || DOCX_MIME);
+        filePath = key;
+        fileName = uploaded.originalname;
+      }
+
+      const template = await storage.createDocTemplate({
+        accountId: req.session.accountId!,
+        name,
+        type,
+        content: content || "",
+        filePath,
+        fileName,
+      });
+      res.status(201).json(template);
+    } catch (err: any) {
+      console.error("Create doc template error:", err);
+      res.status(500).json({ error: "Error al guardar la plantilla" });
+    }
+  });
+
+  app.delete("/api/doc-templates/:id", requireAuth, async (req, res) => {
+    try {
+      const template = await storage.getDocTemplate(req.session.accountId!, req.params.id);
+      if (!template) return res.status(404).json({ error: "Template not found" });
+      if (template.filePath) {
+        try {
+          await deleteFile(template.filePath);
+        } catch (err: any) {
+          console.error("Delete template file error:", err);
+        }
+      }
+      await storage.deleteDocTemplate(req.session.accountId!, req.params.id);
+      res.json({ ok: true });
+    } catch (err: any) {
+      console.error("Delete doc template error:", err);
+      res.status(500).json({ error: "Error al eliminar la plantilla" });
+    }
+  });
+
+  app.post("/api/doc-templates/:id/generate", requireAuth, async (req, res) => {
+    try {
+      const accountId = req.session.accountId!;
+      const template = await storage.getDocTemplate(accountId, req.params.id);
+      if (!template) return res.status(404).json({ error: "Template not found" });
+      if (!template.filePath) {
+        return res.status(400).json({ error: "Esta plantilla no tiene un archivo .docx cargado" });
+      }
+
+      const { caseId, saveToCase } = req.body as { caseId?: string; saveToCase?: boolean };
+
+      let caseRecord: schema.Case | null = null;
+      let client: schema.Client | null = null;
+      if (caseId) {
+        caseRecord = (await storage.getCase(accountId, caseId)) ?? null;
+        if (!caseRecord) return res.status(404).json({ error: "Expediente no encontrado" });
+        if (caseRecord.clientId) {
+          client = (await storage.getClient(accountId, caseRecord.clientId)) ?? null;
+        }
+      }
+
+      const account = await storage.getAccount(accountId);
+      const user = await storage.getUserById(req.session.userId!);
+
+      const { buffer: templateBuffer } = await downloadFile(template.filePath);
+      const data = buildDocData({
+        client,
+        caseRecord,
+        firmName: account?.firmName,
+        lawyerName: user?.name,
+      });
+
+      let output: Buffer;
+      try {
+        output = await generateDocx(templateBuffer, data);
+      } catch (err: any) {
+        console.error("Template render error:", err);
+        return res.status(400).json({ error: describeTemplateError(err) });
+      }
+
+      const label = caseRecord?.number ? `${template.name} - ${caseRecord.number}` : template.name;
+      const outName = `${label.replace(/[\\/:*?"<>|]/g, "-")}.docx`;
+
+      if (saveToCase && caseRecord) {
+        try {
+          const unique = Date.now() + "-" + Math.round(Math.random() * 1e9);
+          const key = `${accountId}/${unique}.docx`;
+          await uploadFile(key, output, DOCX_MIME);
+          await storage.createFile({
+            accountId,
+            name: outName,
+            date: new Date().toISOString().slice(0, 10),
+            type: "Word",
+            caseId: caseRecord.id,
+            description: `Generado desde la plantilla "${template.name}"`,
+            filePath: key,
+          });
+        } catch (err: any) {
+          console.error("Save generated document error:", err);
+        }
+      }
+
+      const asciiName = outName.replace(/[^\x20-\x7E]/g, "_");
+      res.setHeader("Content-Type", DOCX_MIME);
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(outName)}`
+      );
+      res.send(output);
+    } catch (err: any) {
+      console.error("Generate document error:", err);
+      res.status(500).json({ error: "Error al generar el documento" });
+    }
   });
 
   app.get("/api/email-templates", requireAuth, async (req, res) => {

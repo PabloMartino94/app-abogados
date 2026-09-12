@@ -180,12 +180,16 @@ export function StoreProvider({ children }: PropsWithChildren) {
         name: "Demanda estándar",
         type: "Demanda",
         content: "Sr./Sra. Juez...\n\nCliente: {{cliente}}\nDNI: {{dni}}\nFecha: {{fecha}}\nExpediente: {{expediente}}",
+        filePath: "",
+        fileName: "",
       },
       {
         id: "t-2",
         name: "Poder simple",
         type: "Poder",
         content: "Por la presente, {{cliente}}...",
+        filePath: "",
+        fileName: "",
       },
     ];
 

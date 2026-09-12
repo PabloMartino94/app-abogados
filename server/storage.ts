@@ -40,6 +40,7 @@ export interface IStorage {
   getAllDocTemplates(accountId: string): Promise<schema.DocTemplate[]>;
   getDocTemplate(accountId: string, id: string): Promise<schema.DocTemplate | undefined>;
   createDocTemplate(input: schema.InsertDocTemplate): Promise<schema.DocTemplate>;
+  deleteDocTemplate(accountId: string, id: string): Promise<void>;
 
   getAllEmailTemplates(accountId: string): Promise<schema.EmailTemplate[]>;
   getEmailTemplate(accountId: string, id: string): Promise<schema.EmailTemplate | undefined>;
@@ -175,6 +176,10 @@ export class DbStorage implements IStorage {
   async createDocTemplate(input: schema.InsertDocTemplate): Promise<schema.DocTemplate> {
     const rows = await db.insert(schema.docTemplates).values(input).returning();
     return rows[0];
+  }
+
+  async deleteDocTemplate(accountId: string, id: string): Promise<void> {
+    await db.delete(schema.docTemplates).where(and(eq(schema.docTemplates.id, id), eq(schema.docTemplates.accountId, accountId)));
   }
 
   async getAllEmailTemplates(accountId: string): Promise<schema.EmailTemplate[]> {

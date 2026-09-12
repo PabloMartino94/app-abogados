@@ -29,7 +29,9 @@ type StoreApi = {
   createEvent: (input: Omit<AppEvent, "id" | "clientName" | "caseNumber" | "createdBy" | "cancelled">) => Promise<AppEvent>;
   updateEvent: (id: string, input: Partial<AppEvent & { cancelled: boolean }>) => Promise<AppEvent>;
   createFile: (input: Omit<AppFile, "id" | "date" | "caseNumber" | "filePath"> & { file?: globalThis.File | null }) => Promise<AppFile>;
-  createDocTemplate: (input: Omit<DocTemplate, "id">) => Promise<DocTemplate>;
+  createDocTemplate: (input: { name: string; type: DocTemplate["type"]; content?: string; file?: globalThis.File | null }) => Promise<DocTemplate>;
+  deleteDocTemplate: (id: string) => Promise<void>;
+  generateDocument: (input: { templateId: string; caseId?: string; saveToCase?: boolean }) => Promise<{ blob: Blob; filename: string }>;
   createEmailTemplate: (input: Omit<EmailTemplate, "id">) => Promise<EmailTemplate>;
   updateEmailTemplate: (id: string, input: Partial<EmailTemplate>) => Promise<EmailTemplate>;
   deleteEmailTemplate: (id: string) => Promise<void>;
@@ -50,9 +52,21 @@ type StoreApi = {
 
 const StoreContext = createContext<StoreApi | null>(null);
 
+/** Extrae el mensaje de error que manda el servidor, para poder mostrarlo tal cual. */
+async function errorMessage(res: Response): Promise<string> {
+  const text = await res.text();
+  try {
+    const parsed = JSON.parse(text);
+    if (parsed?.error && typeof parsed.error === "string") return parsed.error;
+  } catch {
+    // el cuerpo no era JSON: se usa el texto crudo
+  }
+  return text || `HTTP ${res.status}`;
+}
+
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(url, { ...options, credentials: "include", headers: { "Content-Type": "application/json", ...options?.headers } });
-  if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+  if (!res.ok) throw new Error(await errorMessage(res));
   return res.json();
 }
 
@@ -246,8 +260,45 @@ function useStoreData() {
   });
 
   const createDocTemplateMutation = useMutation({
-    mutationFn: (input: Omit<DocTemplate, "id">) => fetchJson<DocTemplate>("/api/doc-templates", { method: "POST", body: JSON.stringify(input) }),
+    mutationFn: async (input: { name: string; type: DocTemplate["type"]; content?: string; file?: globalThis.File | null }) => {
+      const formData = new FormData();
+      formData.append("name", input.name);
+      formData.append("type", input.type);
+      formData.append("content", input.content || "");
+      if (input.file) formData.append("file", input.file);
+      const res = await fetch("/api/doc-templates", { method: "POST", body: formData, credentials: "include" });
+      if (!res.ok) throw new Error(await errorMessage(res));
+      return res.json() as Promise<DocTemplate>;
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["doc-templates"] }),
+  });
+
+  const deleteDocTemplateMutation = useMutation({
+    mutationFn: (id: string) => fetchJson<any>(`/api/doc-templates/${id}`, { method: "DELETE" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["doc-templates"] }),
+  });
+
+  const generateDocumentMutation = useMutation({
+    mutationFn: async (input: { templateId: string; caseId?: string; saveToCase?: boolean }) => {
+      const res = await fetch(`/api/doc-templates/${input.templateId}/generate`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ caseId: input.caseId, saveToCase: input.saveToCase }),
+      });
+      if (!res.ok) throw new Error(await errorMessage(res));
+      const blob = await res.blob();
+      const disposition = res.headers.get("Content-Disposition") || "";
+      const utf8Match = /filename\*=UTF-8''([^;]+)/i.exec(disposition);
+      const asciiMatch = /filename="([^"]+)"/i.exec(disposition);
+      const filename = utf8Match
+        ? decodeURIComponent(utf8Match[1])
+        : asciiMatch
+          ? asciiMatch[1]
+          : "documento.docx";
+      return { blob, filename };
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["files"] }),
   });
 
   const createEmailTemplateMutation = useMutation({
@@ -319,7 +370,9 @@ function useStoreData() {
     createEvent: (input: Omit<AppEvent, "id" | "clientName" | "caseNumber" | "createdBy" | "cancelled">) => createEventMutation.mutateAsync(input),
     updateEvent: (id: string, input: Partial<AppEvent & { cancelled: boolean }>) => updateEventMutation.mutateAsync({ id, ...input }),
     createFile: (input: Omit<AppFile, "id" | "date" | "caseNumber" | "filePath"> & { file?: globalThis.File | null }) => createFileMutation.mutateAsync(input),
-    createDocTemplate: (input: Omit<DocTemplate, "id">) => createDocTemplateMutation.mutateAsync(input),
+    createDocTemplate: (input: { name: string; type: DocTemplate["type"]; content?: string; file?: globalThis.File | null }) => createDocTemplateMutation.mutateAsync(input),
+    deleteDocTemplate: async (id: string) => { await deleteDocTemplateMutation.mutateAsync(id); },
+    generateDocument: (input: { templateId: string; caseId?: string; saveToCase?: boolean }) => generateDocumentMutation.mutateAsync(input),
     createEmailTemplate: (input: Omit<EmailTemplate, "id">) => createEmailTemplateMutation.mutateAsync(input),
     updateEmailTemplate: (id: string, input: Partial<EmailTemplate>) => updateEmailTemplateMutation.mutateAsync({ id, ...input }),
     deleteEmailTemplate: async (id: string) => { await deleteEmailTemplateMutation.mutateAsync(id); },

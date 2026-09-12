@@ -71,6 +71,8 @@ export type DocTemplate = {
   name: string;
   type: TemplateType;
   content: string;
+  filePath: string;
+  fileName: string;
 };
 
 export type EmailTemplateType = "Recordatorio" | "Notificación" | "Seguimiento";

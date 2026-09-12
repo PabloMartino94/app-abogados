@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useLocation } from "wouter";
-import { LogOut, Pencil, ShieldCheck, Trash2, UserPlus, BellRing, Mail, Plus, Variable, X, MessageSquareWarning } from "lucide-react";
+import { LogOut, Pencil, ShieldCheck, Trash2, UserPlus, BellRing, Mail, Plus, Variable, X, MessageSquareWarning, FileText } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -236,6 +236,27 @@ export default function SettingsPage() {
                 data-testid="button-save-profile"
               >
                 Guardar
+              </Button>
+            </div>
+          </Card>
+
+          <Card className="app-card rounded-3xl p-4">
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4 text-primary" />
+              <div className="text-sm font-semibold" data-testid="text-doc-templates-title">
+                Plantillas de documentos
+              </div>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground" data-testid="text-doc-templates-desc">
+              Subí un modelo en Word con variables y generá el documento ya completado con los datos del expediente.
+            </p>
+            <div className="mt-3">
+              <Button
+                className="w-full rounded-2xl"
+                onClick={() => setLocation("/app/plantillas")}
+                data-testid="button-open-plantillas"
+              >
+                Abrir plantillas
               </Button>
             </div>
           </Card>

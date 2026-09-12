@@ -100,7 +100,10 @@ export const docTemplates = pgTable("doc_templates", {
   accountId: varchar("account_id").notNull(),
   name: text("name").notNull(),
   type: text("type").notNull(),
-  content: text("content").notNull(),
+  content: text("content").notNull().default(""),
+  // Plantilla .docx subida por el estudio (guardada en Supabase Storage).
+  filePath: text("file_path").notNull().default(""),
+  fileName: text("file_name").notNull().default(""),
 });
 
 export const insertDocTemplateSchema = createInsertSchema(docTemplates).omit({ id: true });
