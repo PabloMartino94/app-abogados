@@ -55,6 +55,7 @@ export interface IStorage {
   getReport(accountId: string, id: string): Promise<schema.Report | undefined>;
   createReport(input: schema.InsertReport): Promise<schema.Report>;
   updateReportStatus(accountId: string, id: string, status: string): Promise<schema.Report>;
+  deleteReport(accountId: string, id: string): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
@@ -244,6 +245,10 @@ export class DbStorage implements IStorage {
   async updateReportStatus(accountId: string, id: string, status: string): Promise<schema.Report> {
     const rows = await db.update(schema.reports).set({ status }).where(and(eq(schema.reports.id, id), eq(schema.reports.accountId, accountId))).returning();
     return rows[0];
+  }
+
+  async deleteReport(accountId: string, id: string): Promise<void> {
+    await db.delete(schema.reports).where(and(eq(schema.reports.id, id), eq(schema.reports.accountId, accountId)));
   }
 }
 

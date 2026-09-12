@@ -224,7 +224,7 @@ export default function FilesPage() {
 
           <div className="grid grid-cols-3 gap-2">
             <Select value={filterType} onValueChange={setFilterType}>
-              <SelectTrigger className="rounded-2xl text-xs" data-testid="select-filter-type">
+              <SelectTrigger className="min-w-0 rounded-2xl px-2 text-xs" data-testid="select-filter-type">
                 <SelectValue placeholder="Tipo" />
               </SelectTrigger>
               <SelectContent>
@@ -236,7 +236,7 @@ export default function FilesPage() {
             </Select>
 
             <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="rounded-2xl text-xs" data-testid="select-filter-status">
+              <SelectTrigger className="min-w-0 rounded-2xl px-2 text-xs" data-testid="select-filter-status">
                 <SelectValue placeholder="Estado" />
               </SelectTrigger>
               <SelectContent>
@@ -248,7 +248,7 @@ export default function FilesPage() {
             </Select>
 
             <Select value={filterFuero} onValueChange={setFilterFuero}>
-              <SelectTrigger className="rounded-2xl text-xs" data-testid="select-filter-fuero">
+              <SelectTrigger className="min-w-0 rounded-2xl px-2 text-xs" data-testid="select-filter-fuero">
                 <SelectValue placeholder="Fuero" />
               </SelectTrigger>
               <SelectContent>

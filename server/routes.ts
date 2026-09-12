@@ -410,5 +410,17 @@ export async function registerRoutes(
     }
   });
 
+  app.delete("/api/reports/:id", requireAuth, async (req, res) => {
+    try {
+      const existing = await storage.getReport(req.session.accountId!, req.params.id);
+      if (!existing) return res.status(404).json({ error: "Report not found" });
+      await storage.deleteReport(req.session.accountId!, req.params.id);
+      res.json({ ok: true });
+    } catch (err: any) {
+      console.error("Delete report error:", err);
+      res.status(500).json({ error: "Error al eliminar el reporte" });
+    }
+  });
+
   return httpServer;
 }

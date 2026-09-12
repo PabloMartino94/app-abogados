@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft, Bug, Lightbulb, Plus } from "lucide-react";
+import { ArrowLeft, Bug, Lightbulb, Plus, Trash2 } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +33,7 @@ export default function ReportesPage() {
 
   const [filterKind, setFilterKind] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     return store.reports.filter((r) => {
@@ -42,9 +43,20 @@ export default function ReportesPage() {
     });
   }, [store.reports, filterKind, filterStatus]);
 
+  async function handleDelete(id: string, title: string) {
+    if (deletingId) return;
+    if (!window.confirm(`¿Seguro que querés eliminar el reporte "${title}"? Esta acción no se puede deshacer.`)) return;
+    setDeletingId(id);
+    try {
+      await store.deleteReport(id);
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   return (
     <div className="min-h-dvh app-gradient">
-      <div className="app-container" style={{ paddingBottom: 28 }}>
+      <div className="app-container">
         <header className="flex items-center justify-between gap-3">
           <button
             className="inline-flex items-center gap-2 text-sm font-medium text-primary"
@@ -177,7 +189,7 @@ export default function ReportesPage() {
                       <div className="mt-1.5 text-xs text-muted-foreground">Dónde: {r.pageContext}</div>
                     )}
 
-                    <div className="mt-3 flex items-center gap-2">
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
                       <label className="text-xs font-semibold text-muted-foreground">Estado:</label>
                       <Select
                         value={r.status}
@@ -194,6 +206,17 @@ export default function ReportesPage() {
                           ))}
                         </SelectContent>
                       </Select>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="ml-auto h-8 rounded-xl border-red-200 px-2.5 text-red-600 hover:bg-red-50 hover:text-red-700"
+                        onClick={() => handleDelete(r.id, r.title)}
+                        disabled={deletingId === r.id}
+                        data-testid={`button-delete-report-${r.id}`}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        <span className="ml-1">{deletingId === r.id ? "Eliminando…" : "Eliminar"}</span>
+                      </Button>
                     </div>
                   </div>
                 </div>

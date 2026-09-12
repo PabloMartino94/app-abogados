@@ -70,7 +70,7 @@ export default function ReportarPage() {
 
   return (
     <div className="min-h-dvh app-gradient">
-      <div className="app-container" style={{ paddingBottom: 28 }}>
+      <div className="app-container">
         <header className="flex items-center gap-3">
           <button
             className="inline-flex items-center gap-2 text-sm font-medium text-primary"

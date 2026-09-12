@@ -45,6 +45,7 @@ type StoreApi = {
     priority: ReportPriority;
   }) => Promise<Report>;
   updateReportStatus: (id: string, status: ReportStatus) => Promise<Report>;
+  deleteReport: (id: string) => Promise<void>;
 };
 
 const StoreContext = createContext<StoreApi | null>(null);
@@ -295,6 +296,11 @@ function useStoreData() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["reports"] }),
   });
 
+  const deleteReportMutation = useMutation({
+    mutationFn: (id: string) => fetchJson<any>(`/api/reports/${id}`, { method: "DELETE" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["reports"] }),
+  });
+
   return {
     clients,
     cases,
@@ -329,6 +335,7 @@ function useStoreData() {
       priority: ReportPriority;
     }) => createReportMutation.mutateAsync(input),
     updateReportStatus: (id: string, status: ReportStatus) => updateReportStatusMutation.mutateAsync({ id, status }),
+    deleteReport: async (id: string) => { await deleteReportMutation.mutateAsync(id); },
   };
 }
 
