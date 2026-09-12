@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { format, parseISO, isToday, isTomorrow, addDays, isBefore } from "date-fns";
 import { es } from "date-fns/locale";
-import { CalendarClock, FileText, FolderKanban, UserRound } from "lucide-react";
+import { CalendarClock, FilePlus2, FileText, FolderKanban, Sparkles, UserRound, Variable } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -188,6 +188,30 @@ export default function DashboardPage() {
               >
                 <FileText className="h-4 w-4 text-primary" />
                 <div className="mt-2 text-xs font-semibold">Nuevo evento</div>
+              </button>
+              <button
+                className="rounded-2xl border bg-white/50 px-3 py-3 text-left backdrop-blur transition hover:bg-white/70"
+                onClick={() => setLocation("/app/herramientas")}
+                data-testid="button-quick-herramientas"
+              >
+                <Variable className="h-4 w-4 text-primary" />
+                <div className="mt-2 text-xs font-semibold">Herramientas</div>
+              </button>
+              <button
+                className="rounded-2xl border bg-white/50 px-3 py-3 text-left backdrop-blur transition hover:bg-white/70"
+                onClick={() => setLocation("/app/redactar")}
+                data-testid="button-quick-redactar"
+              >
+                <Sparkles className="h-4 w-4 text-primary" />
+                <div className="mt-2 text-xs font-semibold">Redactar</div>
+              </button>
+              <button
+                className="rounded-2xl border bg-white/50 px-3 py-3 text-left backdrop-blur transition hover:bg-white/70"
+                onClick={() => setLocation("/app/plantillas")}
+                data-testid="button-quick-plantillas"
+              >
+                <FilePlus2 className="h-4 w-4 text-primary" />
+                <div className="mt-2 text-xs font-semibold">Plantillas</div>
               </button>
             </div>
           </Card>

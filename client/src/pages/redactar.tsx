@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft, FileText, RefreshCw, Save, Sparkles } from "lucide-react";
+import { ArrowLeft, FileText, Save, Sparkles } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -159,7 +159,6 @@ export default function RedactarPage() {
                 onClick={() => ask(turns)}
                 data-testid="button-retry-draft"
               >
-                <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
                 Reintentar
               </Button>
             )}

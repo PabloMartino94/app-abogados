@@ -266,6 +266,28 @@ export default function SettingsPage() {
 
           <Card className="app-card rounded-3xl p-4">
             <div className="flex items-center gap-2">
+              <Variable className="h-4 w-4 text-primary" />
+              <div className="text-sm font-semibold" data-testid="text-herramientas-card-title">
+                Herramientas
+              </div>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground" data-testid="text-herramientas-card-desc">
+              Plazos procesales, caducidad, tasa de justicia, montos a letras y otras utilidades de
+              cálculo.
+            </p>
+            <div className="mt-3">
+              <Button
+                className="w-full rounded-2xl"
+                onClick={() => setLocation("/app/herramientas")}
+                data-testid="button-open-herramientas"
+              >
+                Abrir herramientas
+              </Button>
+            </div>
+          </Card>
+
+          <Card className="app-card rounded-3xl p-4">
+            <div className="flex items-center gap-2">
               <Stamp className="h-4 w-4 text-primary" />
               <div className="text-sm font-semibold" data-testid="text-branding-title">
                 Membrete del estudio
