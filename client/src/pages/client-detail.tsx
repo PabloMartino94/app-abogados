@@ -53,6 +53,8 @@ export default function ClientDetailPage() {
         address: client.address,
         blacklist: client.blacklist,
         notes: client.notes,
+        birthDate: client.birthDate || "",
+        monthlyIncome: client.monthlyIncome || "",
       });
     }
   }, [client]);
@@ -115,6 +117,8 @@ export default function ClientDetailPage() {
       address: client!.address,
       blacklist: client!.blacklist,
       notes: client!.notes,
+      birthDate: client!.birthDate || "",
+      monthlyIncome: client!.monthlyIncome || "",
     });
     setEditing(false);
   }
@@ -263,6 +267,34 @@ export default function ClientDetailPage() {
                   </SelectContent>
                 </Select>
               </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-2">
+                  <label className="text-xs font-semibold text-muted-foreground">Fecha de nacimiento</label>
+                  <Input
+                    type="date"
+                    value={editing ? (draft.birthDate ?? "") : (client.birthDate || "")}
+                    onChange={(e) => setDraft({ ...draft, birthDate: e.target.value })}
+                    disabled={!editing}
+                    data-testid="input-client-birth-date"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <label className="text-xs font-semibold text-muted-foreground">Ingreso mensual</label>
+                  <Input
+                    type="number"
+                    inputMode="decimal"
+                    value={editing ? (draft.monthlyIncome ?? "") : (client.monthlyIncome || "")}
+                    onChange={(e) => setDraft({ ...draft, monthlyIncome: e.target.value })}
+                    disabled={!editing}
+                    data-testid="input-client-monthly-income"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Son las variables de las fórmulas de incapacidad. Sirven para valuar un caso sin volver a
+                buscarlas.
+              </p>
 
               <div className="grid gap-2">
                 <label className="text-xs font-semibold text-muted-foreground">Notas</label>

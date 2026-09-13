@@ -9,6 +9,8 @@ export type Client = {
   address: string;
   notes: string;
   blacklist: boolean;
+  birthDate: string;
+  monthlyIncome: string;
   createdBy: string;
 };
 
@@ -26,6 +28,13 @@ export type Case = {
   startDate: string;
   fuero: Fuero;
   notes: string;
+  incidentDate: string;
+  counterparty: string;
+  insurer: string;
+  policyNumber: string;
+  policyLimit: string;
+  deductible: string;
+  settledAmount: string;
   createdBy: string;
 };
 
@@ -145,3 +154,18 @@ export type Report = {
   status: ReportStatus;
   createdAt: string;
 };
+
+export type Valuation = {
+  id: string;
+  caseId: string;
+  name: string;
+  data: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** Campos que no se piden al crear: se completan después, desde el detalle. */
+export type ClientExtraFields = "birthDate" | "monthlyIncome";
+export type CaseExtraFields =
+  | "incidentDate" | "counterparty" | "insurer" | "policyNumber"
+  | "policyLimit" | "deductible" | "settledAmount";

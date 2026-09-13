@@ -18,6 +18,7 @@ import AgendaPage from "@/pages/agenda";
 import TemplatesPage from "@/pages/templates";
 import RedactarPage from "@/pages/redactar";
 import HerramientasPage from "@/pages/herramientas";
+import ValuacionPage from "@/pages/valuacion";
 import FilesPage from "@/pages/files";
 import SettingsPage from "@/pages/settings";
 import ReportarPage from "@/pages/reportar";
@@ -48,6 +49,7 @@ function Router() {
       <Route path="/app/plantillas">{() => <ProtectedRoute component={TemplatesPage} />}</Route>
       <Route path="/app/redactar">{() => <ProtectedRoute component={RedactarPage} />}</Route>
       <Route path="/app/herramientas">{() => <ProtectedRoute component={HerramientasPage} />}</Route>
+      <Route path="/app/valuacion/:caseId">{() => <ProtectedRoute component={ValuacionPage} />}</Route>
       <Route path="/app/archivos">{() => <ProtectedRoute component={FilesPage} />}</Route>
       <Route path="/app/configuracion">{() => <ProtectedRoute component={SettingsPage} />}</Route>
       <Route path="/app/reportar">{() => <ProtectedRoute component={ReportarPage} />}</Route>

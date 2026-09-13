@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useRoute } from "wouter";
-import { ArrowLeft, FileUp, Pencil, Plus, X } from "lucide-react";
+import { Variable, ArrowLeft, FileUp, Pencil, Plus, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -18,6 +18,13 @@ type DraftFields = {
   court: string;
   startDate: string;
   notes: string;
+  incidentDate: string;
+  counterparty: string;
+  insurer: string;
+  policyNumber: string;
+  policyLimit: string;
+  deductible: string;
+  settledAmount: string;
 };
 
 function caseToDraft(c: Case): DraftFields {
@@ -28,6 +35,13 @@ function caseToDraft(c: Case): DraftFields {
     court: c.court,
     startDate: c.startDate,
     notes: c.notes,
+    incidentDate: c.incidentDate || "",
+    counterparty: c.counterparty || "",
+    insurer: c.insurer || "",
+    policyNumber: c.policyNumber || "",
+    policyLimit: c.policyLimit || "",
+    deductible: c.deductible || "",
+    settledAmount: c.settledAmount || "",
   };
 }
 
@@ -121,6 +135,18 @@ export default function CaseDetailPage() {
             <Badge variant="secondary" data-testid="badge-case-status">
               {caseItem.status}
             </Badge>
+            {!editing && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-2xl"
+                onClick={() => setLocation(`/app/valuacion/${caseItem.id}`)}
+                data-testid="button-valuar-caso"
+              >
+                <Variable className="h-4 w-4" />
+                Valuar
+              </Button>
+            )}
             {!editing && (
               <Button
                 variant="outline"
@@ -220,6 +246,91 @@ export default function CaseDetailPage() {
                   disabled={!editing}
                   data-testid="input-case-start-date"
                 />
+              </div>
+
+              <div className="grid gap-2">
+                <label className="text-xs font-semibold text-muted-foreground">Fecha del hecho</label>
+                <Input
+                  type="date"
+                  value={draft.incidentDate}
+                  onChange={(e) => setDraft({ ...draft, incidentDate: e.target.value })}
+                  disabled={!editing}
+                  data-testid="input-case-incident-date"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Desde acá corren los intereses. No es lo mismo que la fecha de inicio del expediente.
+                </p>
+              </div>
+
+              <div className="grid gap-2">
+                <label className="text-xs font-semibold text-muted-foreground">Contraparte</label>
+                <Input
+                  value={draft.counterparty}
+                  onChange={(e) => setDraft({ ...draft, counterparty: e.target.value })}
+                  disabled={!editing}
+                  data-testid="input-case-counterparty"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-2">
+                  <label className="text-xs font-semibold text-muted-foreground">Aseguradora</label>
+                  <Input
+                    value={draft.insurer}
+                    onChange={(e) => setDraft({ ...draft, insurer: e.target.value })}
+                    disabled={!editing}
+                    data-testid="input-case-insurer"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <label className="text-xs font-semibold text-muted-foreground">N° de póliza</label>
+                  <Input
+                    value={draft.policyNumber}
+                    onChange={(e) => setDraft({ ...draft, policyNumber: e.target.value })}
+                    disabled={!editing}
+                    data-testid="input-case-policy-number"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-2">
+                  <label className="text-xs font-semibold text-muted-foreground">Suma asegurada</label>
+                  <Input
+                    type="number"
+                    inputMode="decimal"
+                    value={draft.policyLimit}
+                    onChange={(e) => setDraft({ ...draft, policyLimit: e.target.value })}
+                    disabled={!editing}
+                    data-testid="input-case-policy-limit"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <label className="text-xs font-semibold text-muted-foreground">Franquicia</label>
+                  <Input
+                    type="number"
+                    inputMode="decimal"
+                    value={draft.deductible}
+                    onChange={(e) => setDraft({ ...draft, deductible: e.target.value })}
+                    disabled={!editing}
+                    data-testid="input-case-deductible"
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-2">
+                <label className="text-xs font-semibold text-muted-foreground">Monto acordado al cerrar</label>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  value={draft.settledAmount}
+                  onChange={(e) => setDraft({ ...draft, settledAmount: e.target.value })}
+                  disabled={!editing}
+                  data-testid="input-case-settled-amount"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Con el tiempo, el archivo propio de lo que se acordó vale más que cualquier base publicada.
+                </p>
               </div>
 
               <div className="grid gap-2">

@@ -53,6 +53,12 @@ export interface IStorage {
   getNotificationSetting(accountId: string, eventType: string): Promise<schema.NotificationSetting | undefined>;
   upsertNotificationSetting(input: schema.InsertNotificationSetting): Promise<schema.NotificationSetting>;
 
+  getValuationsByCase(accountId: string, caseId: string): Promise<schema.Valuation[]>;
+  getValuation(accountId: string, id: string): Promise<schema.Valuation | undefined>;
+  createValuation(input: schema.InsertValuation): Promise<schema.Valuation>;
+  updateValuation(accountId: string, id: string, input: Partial<schema.InsertValuation>): Promise<schema.Valuation>;
+  deleteValuation(accountId: string, id: string): Promise<void>;
+
   getAllReports(accountId: string): Promise<schema.Report[]>;
   getReport(accountId: string, id: string): Promise<schema.Report | undefined>;
   createReport(input: schema.InsertReport): Promise<schema.Report>;
@@ -237,6 +243,38 @@ export class DbStorage implements IStorage {
     }
     const rows = await db.insert(schema.notificationSettings).values(input).returning();
     return rows[0];
+  }
+
+  async getValuationsByCase(accountId: string, caseId: string): Promise<schema.Valuation[]> {
+    return db.select().from(schema.valuations).where(
+      and(eq(schema.valuations.accountId, accountId), eq(schema.valuations.caseId, caseId))
+    );
+  }
+
+  async getValuation(accountId: string, id: string): Promise<schema.Valuation | undefined> {
+    const rows = await db.select().from(schema.valuations).where(
+      and(eq(schema.valuations.id, id), eq(schema.valuations.accountId, accountId))
+    );
+    return rows[0];
+  }
+
+  async createValuation(input: schema.InsertValuation): Promise<schema.Valuation> {
+    const rows = await db.insert(schema.valuations).values(input).returning();
+    return rows[0];
+  }
+
+  async updateValuation(accountId: string, id: string, input: Partial<schema.InsertValuation>): Promise<schema.Valuation> {
+    const rows = await db.update(schema.valuations)
+      .set({ ...input, updatedAt: new Date() })
+      .where(and(eq(schema.valuations.id, id), eq(schema.valuations.accountId, accountId)))
+      .returning();
+    return rows[0];
+  }
+
+  async deleteValuation(accountId: string, id: string): Promise<void> {
+    await db.delete(schema.valuations).where(
+      and(eq(schema.valuations.id, id), eq(schema.valuations.accountId, accountId))
+    );
   }
 
   async getAllReports(accountId: string): Promise<schema.Report[]> {

@@ -613,6 +613,63 @@ export async function registerRoutes(
     res.status(200).json(setting);
   });
 
+  app.get("/api/cases/:caseId/valuations", requireAuth, async (req, res) => {
+    const valuations = await storage.getValuationsByCase(req.session.accountId!, req.params.caseId);
+    res.json(valuations);
+  });
+
+  app.post("/api/cases/:caseId/valuations", requireAuth, async (req, res) => {
+    try {
+      const accountId = req.session.accountId!;
+      const existing = await storage.getCase(accountId, req.params.caseId);
+      if (!existing) return res.status(404).json({ error: "Expediente no encontrado" });
+
+      const { name, data } = req.body ?? {};
+      const valuation = await storage.createValuation({
+        accountId,
+        caseId: req.params.caseId,
+        name: typeof name === "string" ? name : "",
+        data: typeof data === "string" ? data : JSON.stringify(data ?? {}),
+      });
+      res.status(201).json(valuation);
+    } catch (err: any) {
+      console.error("Create valuation error:", err);
+      res.status(500).json({ error: "Error al guardar la valuación" });
+    }
+  });
+
+  app.put("/api/valuations/:id", requireAuth, async (req, res) => {
+    try {
+      const accountId = req.session.accountId!;
+      const existing = await storage.getValuation(accountId, req.params.id);
+      if (!existing) return res.status(404).json({ error: "Valuación no encontrada" });
+
+      const { name, data } = req.body ?? {};
+      const update: { name?: string; data?: string } = {};
+      if (typeof name === "string") update.name = name;
+      if (data !== undefined) update.data = typeof data === "string" ? data : JSON.stringify(data);
+
+      const valuation = await storage.updateValuation(accountId, req.params.id, update);
+      res.json(valuation);
+    } catch (err: any) {
+      console.error("Update valuation error:", err);
+      res.status(500).json({ error: "Error al actualizar la valuación" });
+    }
+  });
+
+  app.delete("/api/valuations/:id", requireAuth, async (req, res) => {
+    try {
+      const accountId = req.session.accountId!;
+      const existing = await storage.getValuation(accountId, req.params.id);
+      if (!existing) return res.status(404).json({ error: "Valuación no encontrada" });
+      await storage.deleteValuation(accountId, req.params.id);
+      res.json({ ok: true });
+    } catch (err: any) {
+      console.error("Delete valuation error:", err);
+      res.status(500).json({ error: "Error al eliminar la valuación" });
+    }
+  });
+
   app.get("/api/reports", requireAuth, async (req, res) => {
     const reports = await storage.getAllReports(req.session.accountId!);
     res.json(reports);

@@ -1,6 +1,6 @@
 import { createContext, PropsWithChildren, useContext, useMemo } from "react";
 import { QueryClient, QueryClientProvider, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { AccountInfo, AppEvent, AppFile, Case, CaseStatus, Client, DocTemplate, DraftResult, DraftTurn, EmailTemplate, Fuero, NotificationSettings, Report, ReportKind, ReportPriority, ReportStatus } from "@/lib/types";
+import type { AccountInfo, AppEvent, AppFile, Case, CaseStatus, Client, DocTemplate, DraftResult, DraftTurn, EmailTemplate, Fuero, NotificationSettings, Report, ReportKind, ReportPriority, ReportStatus, Valuation, ClientExtraFields, CaseExtraFields } from "@/lib/types";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -21,10 +21,10 @@ type StoreApi = {
   users: AccountUser[];
   reports: Report[];
 
-  createClient: (input: Omit<Client, "id" | "createdBy">) => Promise<Client>;
+  createClient: (input: Omit<Client, "id" | "createdBy" | ClientExtraFields>) => Promise<Client>;
   updateClient: (id: string, input: Partial<Client>) => Promise<Client>;
   deleteClient: (id: string) => Promise<void>;
-  createCase: (input: Omit<Case, "id" | "clientName" | "createdBy">) => Promise<Case>;
+  createCase: (input: Omit<Case, "id" | "clientName" | "createdBy" | CaseExtraFields>) => Promise<Case>;
   updateCase: (id: string, input: Partial<Case>) => Promise<Case>;
   createEvent: (input: Omit<AppEvent, "id" | "clientName" | "caseNumber" | "createdBy" | "cancelled">) => Promise<AppEvent>;
   updateEvent: (id: string, input: Partial<AppEvent & { cancelled: boolean }>) => Promise<AppEvent>;
@@ -51,6 +51,11 @@ type StoreApi = {
   }) => Promise<Report>;
   updateReportStatus: (id: string, status: ReportStatus) => Promise<Report>;
   deleteReport: (id: string) => Promise<void>;
+
+  listValuations: (caseId: string) => Promise<Valuation[]>;
+  createValuation: (caseId: string, input: { name: string; data: string }) => Promise<Valuation>;
+  updateValuation: (id: string, input: { name?: string; data?: string }) => Promise<Valuation>;
+  deleteValuation: (id: string) => Promise<void>;
 };
 
 const StoreContext = createContext<StoreApi | null>(null);
@@ -88,7 +93,7 @@ function useStoreData() {
 
   const { data: rawCases = [] } = useQuery({
     queryKey: ["cases"],
-    queryFn: () => fetchJson<Array<{ id: string; number: string; clientId: string; status: string; court: string; startDate: string; fuero: string; notes: string; createdBy: string }>>("/api/cases"),
+    queryFn: () => fetchJson<Array<{ id: string; number: string; clientId: string; status: string; court: string; startDate: string; fuero: string; notes: string; incidentDate: string; counterparty: string; insurer: string; policyNumber: string; policyLimit: string; deductible: string; settledAmount: string; createdBy: string }>>("/api/cases"),
   });
 
   const cases: Case[] = useMemo(() => {
@@ -206,7 +211,7 @@ function useStoreData() {
   }, [rawReports, users]);
 
   const createClientMutation = useMutation({
-    mutationFn: (input: Omit<Client, "id" | "createdBy">) => fetchJson<Client>("/api/clients", { method: "POST", body: JSON.stringify(input) }),
+    mutationFn: (input: Omit<Client, "id" | "createdBy" | ClientExtraFields>) => fetchJson<Client>("/api/clients", { method: "POST", body: JSON.stringify(input) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["clients"] }),
   });
 
@@ -221,7 +226,7 @@ function useStoreData() {
   });
 
   const createCaseMutation = useMutation({
-    mutationFn: (input: Omit<Case, "id" | "clientName" | "createdBy">) => fetchJson<any>("/api/cases", { method: "POST", body: JSON.stringify(input) }),
+    mutationFn: (input: Omit<Case, "id" | "clientName" | "createdBy" | CaseExtraFields>) => fetchJson<any>("/api/cases", { method: "POST", body: JSON.stringify(input) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["cases"] }),
   });
 
@@ -390,10 +395,10 @@ function useStoreData() {
     notificationSettings,
     users,
     reports,
-    createClient: (input: Omit<Client, "id" | "createdBy">) => createClientMutation.mutateAsync(input),
+    createClient: (input: Omit<Client, "id" | "createdBy" | ClientExtraFields>) => createClientMutation.mutateAsync(input),
     updateClient: (id: string, input: Partial<Client>) => updateClientMutation.mutateAsync({ id, ...input }),
     deleteClient: async (id: string) => { await deleteClientMutation.mutateAsync(id); },
-    createCase: (input: Omit<Case, "id" | "clientName" | "createdBy">) => createCaseMutation.mutateAsync(input),
+    createCase: (input: Omit<Case, "id" | "clientName" | "createdBy" | CaseExtraFields>) => createCaseMutation.mutateAsync(input),
     updateCase: (id: string, input: Partial<Case>) => updateCaseMutation.mutateAsync({ id, ...input }),
     createEvent: (input: Omit<AppEvent, "id" | "clientName" | "caseNumber" | "createdBy" | "cancelled">) => createEventMutation.mutateAsync(input),
     updateEvent: (id: string, input: Partial<AppEvent & { cancelled: boolean }>) => updateEventMutation.mutateAsync({ id, ...input }),
@@ -420,6 +425,13 @@ function useStoreData() {
     }) => createReportMutation.mutateAsync(input),
     updateReportStatus: (id: string, status: ReportStatus) => updateReportStatusMutation.mutateAsync({ id, status }),
     deleteReport: async (id: string) => { await deleteReportMutation.mutateAsync(id); },
+
+    listValuations: (caseId: string) => fetchJson<Valuation[]>(`/api/cases/${caseId}/valuations`),
+    createValuation: (caseId: string, input: { name: string; data: string }) =>
+      fetchJson<Valuation>(`/api/cases/${caseId}/valuations`, { method: "POST", body: JSON.stringify(input) }),
+    updateValuation: (id: string, input: { name?: string; data?: string }) =>
+      fetchJson<Valuation>(`/api/valuations/${id}`, { method: "PUT", body: JSON.stringify(input) }),
+    deleteValuation: async (id: string) => { await fetchJson<any>(`/api/valuations/${id}`, { method: "DELETE" }); },
   };
 }
 

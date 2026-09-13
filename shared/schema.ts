@@ -40,6 +40,9 @@ export const clients = pgTable("clients", {
   address: text("address").notNull().default(""),
   notes: text("notes").notNull().default(""),
   blacklist: boolean("blacklist").notNull().default(false),
+  // Variables de las fórmulas de cuantificación del daño.
+  birthDate: text("birth_date").notNull().default(""),
+  monthlyIncome: text("monthly_income").notNull().default(""),
   createdBy: varchar("created_by").notNull().default(""),
 });
 
@@ -57,6 +60,17 @@ export const cases = pgTable("cases", {
   startDate: text("start_date").notNull(),
   fuero: text("fuero").notNull(),
   notes: text("notes").notNull().default(""),
+  // Fecha del hecho dañoso: distinta del inicio del expediente, y es desde
+  // donde corren los intereses.
+  incidentDate: text("incident_date").notNull().default(""),
+  counterparty: text("counterparty").notNull().default(""),
+  insurer: text("insurer").notNull().default(""),
+  policyNumber: text("policy_number").notNull().default(""),
+  policyLimit: text("policy_limit").notNull().default(""),
+  deductible: text("deductible").notNull().default(""),
+  // Monto efectivamente acordado al cerrar. Con el tiempo, el archivo propio de
+  // acuerdos del estudio vale más que cualquier base publicada.
+  settledAmount: text("settled_amount").notNull().default(""),
   createdBy: varchar("created_by").notNull().default(""),
 });
 
@@ -115,6 +129,21 @@ export const docTemplates = pgTable("doc_templates", {
 export const insertDocTemplateSchema = createInsertSchema(docTemplates).omit({ id: true });
 export type InsertDocTemplate = z.infer<typeof insertDocTemplateSchema>;
 export type DocTemplate = typeof docTemplates.$inferSelect;
+
+export const valuations = pgTable("valuations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  accountId: varchar("account_id").notNull(),
+  caseId: varchar("case_id").notNull(),
+  name: text("name").notNull().default(""),
+  /** Toda la valuación serializada: rubros, tasas, póliza y supuestos. */
+  data: text("data").notNull().default("{}"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertValuationSchema = createInsertSchema(valuations).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertValuation = z.infer<typeof insertValuationSchema>;
+export type Valuation = typeof valuations.$inferSelect;
 
 export const emailTemplates = pgTable("email_templates", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
