@@ -37,6 +37,8 @@ export interface IStorage {
   getAllFiles(accountId: string): Promise<schema.File[]>;
   getFile(accountId: string, id: string): Promise<schema.File | undefined>;
   createFile(input: schema.InsertFile): Promise<schema.File>;
+  updateFile(accountId: string, id: string, input: Partial<schema.InsertFile>): Promise<schema.File | undefined>;
+  deleteFile(accountId: string, id: string): Promise<void>;
 
   getAllDocTemplates(accountId: string): Promise<schema.DocTemplate[]>;
   getDocTemplate(accountId: string, id: string): Promise<schema.DocTemplate | undefined>;
@@ -174,6 +176,19 @@ export class DbStorage implements IStorage {
   async createFile(input: schema.InsertFile): Promise<schema.File> {
     const rows = await db.insert(schema.files).values(input).returning();
     return rows[0];
+  }
+
+  async updateFile(accountId: string, id: string, input: Partial<schema.InsertFile>): Promise<schema.File | undefined> {
+    const rows = await db.update(schema.files).set(input).where(
+      and(eq(schema.files.id, id), eq(schema.files.accountId, accountId))
+    ).returning();
+    return rows[0];
+  }
+
+  async deleteFile(accountId: string, id: string): Promise<void> {
+    await db.delete(schema.files).where(
+      and(eq(schema.files.id, id), eq(schema.files.accountId, accountId))
+    );
   }
 
   async getAllDocTemplates(accountId: string): Promise<schema.DocTemplate[]> {

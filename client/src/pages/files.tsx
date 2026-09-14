@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { FileAudio2, FileImage, FileText, FileUp, File, Search, Download, Eye, Plus, X } from "lucide-react";
+import { FileAudio2, FileImage, FileText, FileUp, File, Search, Download, Eye, Plus, X, Trash2 } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -51,11 +51,24 @@ export default function FilesPage() {
     return map;
   }, [store.cases]);
 
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  async function handleDelete(id: string, name: string) {
+    if (deletingId) return;
+    if (!window.confirm(`¿Seguro que querés eliminar el archivo "${name}"? Se borra de la cuenta y no se puede deshacer.`)) return;
+    setDeletingId(id);
+    try {
+      await store.deleteFile(id);
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   const filteredFiles = useMemo(() => {
     return store.files.filter((f) => {
       if (filterType !== "all" && f.type !== filterType) return false;
 
-      const linkedCase = caseMap.get(f.caseId);
+      const linkedCase = f.caseId ? caseMap.get(f.caseId) : undefined;
       if (filterStatus !== "all") {
         if (!linkedCase || linkedCase.status !== filterStatus) return false;
       }
@@ -274,7 +287,7 @@ export default function FilesPage() {
             )}
             {filteredFiles.map((f) => {
               const Icon = iconFor[f.type] || File;
-              const linkedCase = caseMap.get(f.caseId);
+              const linkedCase = f.caseId ? caseMap.get(f.caseId) : undefined;
               return (
                 <div
                   key={f.id}
@@ -313,6 +326,16 @@ export default function FilesPage() {
                           >
                             <Download className="h-3.5 w-3.5 text-primary" />
                           </a>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(f.id, f.name)}
+                            disabled={deletingId === f.id}
+                            className="grid h-8 w-8 place-items-center rounded-xl border border-red-200 bg-white/60 transition hover:bg-red-50 disabled:opacity-50"
+                            title="Eliminar archivo"
+                            data-testid={`button-delete-file-${f.id}`}
+                          >
+                            <Trash2 className="h-3.5 w-3.5 text-red-600" />
+                          </button>
                         </div>
                       </div>
                       {linkedCase && (
@@ -323,6 +346,9 @@ export default function FilesPage() {
                           <Badge variant="outline" className="text-[10px] px-1.5 py-0 capitalize">{linkedCase.fuero}</Badge>
                           <span>· {linkedCase.clientName}</span>
                         </div>
+                      )}
+                      {!linkedCase && (
+                        <div className="mt-1.5 text-xs text-muted-foreground italic">Sin expediente</div>
                       )}
                       {f.desc && (
                         <div className="mt-1 truncate text-xs text-muted-foreground">{f.desc}</div>

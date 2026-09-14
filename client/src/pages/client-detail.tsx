@@ -34,7 +34,7 @@ export default function ClientDetailPage() {
 
   const clientCaseIds = useMemo(() => new Set(clientCases.map((c) => c.id)), [clientCases]);
   const clientFiles = useMemo(
-    () => store.files.filter((f) => clientCaseIds.has(f.caseId)),
+    () => store.files.filter((f) => f.caseId !== null && clientCaseIds.has(f.caseId)),
     [store.files, clientCaseIds],
   );
 

@@ -103,7 +103,9 @@ export const files = pgTable("files", {
   name: text("name").notNull(),
   date: text("date").notNull(),
   type: text("type").notNull(),
-  caseId: varchar("case_id").notNull(),
+  // Nullable: un archivo puede desvincularse del expediente y quedar suelto
+  // en la sección Archivos.
+  caseId: varchar("case_id"),
   description: text("description").notNull().default(""),
   filePath: text("file_path").notNull().default(""),
 });

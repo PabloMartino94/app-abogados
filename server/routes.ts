@@ -390,6 +390,59 @@ export async function registerRoutes(
     }
   });
 
+  // Desvincular de un expediente (caseId: null) o reasignar a otro.
+  app.put<IdParam>("/api/files/:id", requireAuth, async (req, res) => {
+    try {
+      const accountId = req.session.accountId!;
+      const existing = await storage.getFile(accountId, req.params.id);
+      if (!existing) return res.status(404).json({ error: "File not found" });
+
+      const { caseId, description } = req.body as { caseId?: string | null; description?: string };
+      const fields: { caseId?: string | null; description?: string } = {};
+
+      if (caseId !== undefined) {
+        if (caseId === null || caseId === "") {
+          fields.caseId = null;
+        } else {
+          // No dejamos apuntar a un expediente de otra cuenta.
+          const caseRecord = await storage.getCase(accountId, caseId);
+          if (!caseRecord) return res.status(400).json({ error: "El expediente no existe" });
+          fields.caseId = caseId;
+        }
+      }
+      if (description !== undefined) fields.description = description;
+
+      const file = await storage.updateFile(accountId, req.params.id, fields);
+      res.json(file);
+    } catch (err: any) {
+      console.error("Update file error:", err);
+      res.status(500).json({ error: "Error al actualizar archivo" });
+    }
+  });
+
+  app.delete<IdParam>("/api/files/:id", requireAuth, async (req, res) => {
+    try {
+      const accountId = req.session.accountId!;
+      const existing = await storage.getFile(accountId, req.params.id);
+      if (!existing) return res.status(404).json({ error: "File not found" });
+
+      if (existing.filePath) {
+        // Si el blob ya no está, igual borramos la fila: si no, el archivo
+        // quedaría para siempre en la lista sin forma de sacarlo.
+        try {
+          await deleteFile(existing.filePath);
+        } catch (err: any) {
+          console.error("Delete file from storage error:", err);
+        }
+      }
+      await storage.deleteFile(accountId, req.params.id);
+      res.json({ ok: true });
+    } catch (err: any) {
+      console.error("Delete file error:", err);
+      res.status(500).json({ error: "Error al eliminar archivo" });
+    }
+  });
+
   app.get("/api/doc-templates", requireAuth, async (req, res) => {
     const templates = await storage.getAllDocTemplates(req.session.accountId!);
     res.json(templates);

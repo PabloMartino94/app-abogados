@@ -66,7 +66,8 @@ export type AppFile = {
   name: string;
   date: string;
   type: FileType;
-  caseId: string;
+  // null cuando el archivo está suelto, sin expediente asociado.
+  caseId: string | null;
   caseNumber: string;
   desc: string;
   description?: string;

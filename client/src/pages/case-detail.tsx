@@ -85,6 +85,20 @@ export default function CaseDetailPage() {
     caseItem ? caseToDraft(caseItem) : DRAFT_VACIO
   );
   const [saving, setSaving] = useState(false);
+  const [unlinkingId, setUnlinkingId] = useState<string | null>(null);
+
+  // Desvincular deja el archivo en la cuenta, suelto en la sección Archivos.
+  // No lo borra: para eso está el botón de eliminar en esa sección.
+  async function handleUnlink(fileId: string, name: string) {
+    if (unlinkingId) return;
+    if (!window.confirm(`¿Desvincular "${name}" de este expediente? El archivo queda en la sección Archivos, sin expediente asociado.`)) return;
+    setUnlinkingId(fileId);
+    try {
+      await store.updateFile({ id: fileId, caseId: null });
+    } finally {
+      setUnlinkingId(null);
+    }
+  }
 
   useEffect(() => {
     if (caseItem && !editing) {
@@ -458,16 +472,27 @@ export default function CaseDetailPage() {
                       {f.type} · {f.date}
                     </div>
                   </div>
-                  <Button
-                    variant="outline"
-                    className="rounded-2xl"
-                    data-testid={`button-view-file-${f.id}`}
-                    asChild
-                  >
-                    <a href={`/api/files/${f.id}/view`} target="_blank" rel="noopener noreferrer">
-                      Ver
-                    </a>
-                  </Button>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Button
+                      variant="outline"
+                      className="rounded-2xl"
+                      data-testid={`button-view-file-${f.id}`}
+                      asChild
+                    >
+                      <a href={`/api/files/${f.id}/view`} target="_blank" rel="noopener noreferrer">
+                        Ver
+                      </a>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="rounded-2xl border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                      onClick={() => handleUnlink(f.id, f.name)}
+                      disabled={unlinkingId === f.id}
+                      data-testid={`button-unlink-file-${f.id}`}
+                    >
+                      {unlinkingId === f.id ? "Desvinculando…" : "Desvincular"}
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
