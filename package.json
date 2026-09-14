@@ -9,6 +9,7 @@
     "build": "tsx script/build.ts",
     "start": "NODE_ENV=production node dist/index.cjs",
     "check": "tsc",
+    "test": "tsx test/tools-fechas.test.ts && tsx test/tools-montos.test.ts && tsx test/tools-texto.test.ts && tsx test/tools-valuacion.test.ts",
     "db:push": "drizzle-kit push"
   },
   "dependencies": {

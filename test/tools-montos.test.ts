@@ -87,7 +87,7 @@ cerca("total", d.total, 4000000, 1);
 const d2 = danosPunitivos(1000000, 1);
 cerca("Pc=1 no hay multa", d2.multa, 0, 0.001);
 
-console.log(fallos === 0 ? "\nTODO OK" : `\n${fallos} FALLA(S)`);
-
 // Apócope en centavos.
 chequear("21 centavos", montoALetras(5.21).texto, "cinco pesos con veintiún centavos");
+
+console.log(fallos === 0 ? "\nTODO OK" : `\n${fallos} FALLA(S)`);
