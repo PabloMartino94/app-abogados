@@ -29,6 +29,8 @@ type StoreApi = {
   createEvent: (input: Omit<AppEvent, "id" | "clientName" | "caseNumber" | "createdBy" | "cancelled">) => Promise<AppEvent>;
   updateEvent: (id: string, input: Partial<AppEvent & { cancelled: boolean }>) => Promise<AppEvent>;
   createFile: (input: Omit<AppFile, "id" | "date" | "caseNumber" | "filePath"> & { file?: globalThis.File | null }) => Promise<AppFile>;
+  updateFile: (input: { id: string; caseId?: string | null; description?: string }) => Promise<void>;
+  deleteFile: (id: string) => Promise<void>;
   account: AccountInfo | null;
   updateBranding: (input: { letterheadAddress?: string; logo?: globalThis.File | null }) => Promise<AccountInfo>;
   draftWithAi: (turns: DraftTurn[]) => Promise<DraftResult>;
@@ -128,12 +130,12 @@ function useStoreData() {
 
   const { data: rawFiles = [] } = useQuery({
     queryKey: ["files"],
-    queryFn: () => fetchJson<Array<{ id: string; name: string; date: string; type: string; caseId: string; description: string; filePath: string }>>("/api/files"),
+    queryFn: () => fetchJson<Array<{ id: string; name: string; date: string; type: string; caseId: string | null; description: string; filePath: string }>>("/api/files"),
   });
 
   const files: AppFile[] = useMemo(() => {
     return rawFiles.map((f) => {
-      const caseItem = cases.find((c) => c.id === f.caseId);
+      const caseItem = f.caseId ? cases.find((c) => c.id === f.caseId) : undefined;
       return {
         ...f,
         type: f.type as AppFile["type"],
@@ -263,12 +265,23 @@ function useStoreData() {
       if (input.file) formData.append("file", input.file);
       formData.append("name", input.name);
       formData.append("type", input.type);
-      formData.append("caseId", input.caseId);
+      formData.append("caseId", input.caseId ?? "");
       formData.append("description", input.desc || "");
       const res = await fetch("/api/files", { method: "POST", body: formData, credentials: "include" });
       if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
       return res.json();
     },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["files"] }),
+  });
+
+  const updateFileMutation = useMutation({
+    mutationFn: ({ id, ...fields }: { id: string; caseId?: string | null; description?: string }) =>
+      fetchJson<any>(`/api/files/${id}`, { method: "PUT", body: JSON.stringify(fields) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["files"] }),
+  });
+
+  const deleteFileMutation = useMutation({
+    mutationFn: (id: string) => fetchJson<any>(`/api/files/${id}`, { method: "DELETE" }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["files"] }),
   });
 
@@ -403,6 +416,8 @@ function useStoreData() {
     createEvent: (input: Omit<AppEvent, "id" | "clientName" | "caseNumber" | "createdBy" | "cancelled">) => createEventMutation.mutateAsync(input),
     updateEvent: (id: string, input: Partial<AppEvent & { cancelled: boolean }>) => updateEventMutation.mutateAsync({ id, ...input }),
     createFile: (input: Omit<AppFile, "id" | "date" | "caseNumber" | "filePath"> & { file?: globalThis.File | null }) => createFileMutation.mutateAsync(input),
+    updateFile: async (input: { id: string; caseId?: string | null; description?: string }) => { await updateFileMutation.mutateAsync(input); },
+    deleteFile: async (id: string) => { await deleteFileMutation.mutateAsync(id); },
     account,
     updateBranding: (input: { letterheadAddress?: string; logo?: globalThis.File | null }) => updateBrandingMutation.mutateAsync(input),
     draftWithAi: (turns: DraftTurn[]) => draftWithAiMutation.mutateAsync(turns),
