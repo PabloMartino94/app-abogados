@@ -1,9 +1,6 @@
 {
   "include": ["client/src/**/*", "shared/**/*", "server/**/*"],
-  // client/src/lib/store.tsx es el store viejo en memoria, reemplazado por
-  // lib/api.tsx. No lo importa nadie y sus datos de ejemplo quedaron
-  // desactualizados. Excluido para no ensuciar `npm run check`; se puede borrar.
-  "exclude": ["node_modules", "build", "dist", "**/*.test.ts", "client/src/lib/store.tsx"],
+  "exclude": ["node_modules", "build", "dist", "**/*.test.ts"],
   "compilerOptions": {
     "target": "ES2022",
     "incremental": true,
