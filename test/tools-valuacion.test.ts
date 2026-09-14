@@ -115,3 +115,5 @@ chequear("plantilla desconocida cae en genérico",
   rubrosDePlantilla("no_existe" as any).length, 1);
 
 console.log(fallos === 0 ? "\nTODO OK" : `\n${fallos} FALLA(S)`);
+// Exit code distinto de cero para que `npm test` sirva como señal automática.
+process.exitCode = fallos === 0 ? 0 : 1;

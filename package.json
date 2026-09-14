@@ -9,6 +9,7 @@
     "build": "tsx script/build.ts",
     "start": "NODE_ENV=production node dist/index.cjs",
     "check": "tsc",
+    "test": "e=0; for f in test/*.test.ts; do tsx \"$f\" || e=1; done; exit $e",
     "db:push": "drizzle-kit push"
   },
   "dependencies": {

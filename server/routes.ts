@@ -23,6 +23,12 @@ declare module "express-session" {
   }
 }
 
+// Express 5 tipa los params como `string | string[]` porque admite patrones
+// repetidos (`/:id+`). Todas nuestras rutas usan un único valor, así que
+// declaramos la forma concreta y evitamos narrowing en cada handler.
+type IdParam = { id: string };
+type CaseIdParam = { caseId: string };
+
 function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (!req.session?.userId || !req.session?.accountId) {
     return res.status(401).json({ error: "No autorizado" });
@@ -214,7 +220,7 @@ export async function registerRoutes(
     res.json(clients);
   });
 
-  app.get("/api/clients/:id", requireAuth, async (req, res) => {
+  app.get<IdParam>("/api/clients/:id", requireAuth, async (req, res) => {
     const client = await storage.getClient(req.session.accountId!, req.params.id);
     if (!client) return res.status(404).json({ error: "Client not found" });
     res.json(client);
@@ -227,7 +233,7 @@ export async function registerRoutes(
     res.status(201).json(client);
   });
 
-  app.put("/api/clients/:id", requireAuth, async (req, res) => {
+  app.put<IdParam>("/api/clients/:id", requireAuth, async (req, res) => {
     try {
       const { accountId, id: _id, ...fields } = req.body;
       const client = await storage.updateClient(req.session.accountId!, req.params.id, fields);
@@ -239,7 +245,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/clients/:id", requireAuth, async (req, res) => {
+  app.delete<IdParam>("/api/clients/:id", requireAuth, async (req, res) => {
     try {
       const existing = await storage.getClient(req.session.accountId!, req.params.id);
       if (!existing) return res.status(404).json({ error: "Client not found" });
@@ -256,7 +262,7 @@ export async function registerRoutes(
     res.json(cases);
   });
 
-  app.get("/api/cases/:id", requireAuth, async (req, res) => {
+  app.get<IdParam>("/api/cases/:id", requireAuth, async (req, res) => {
     const caseData = await storage.getCase(req.session.accountId!, req.params.id);
     if (!caseData) return res.status(404).json({ error: "Case not found" });
     res.json(caseData);
@@ -269,7 +275,7 @@ export async function registerRoutes(
     res.status(201).json(caseData);
   });
 
-  app.put("/api/cases/:id", requireAuth, async (req, res) => {
+  app.put<IdParam>("/api/cases/:id", requireAuth, async (req, res) => {
     try {
       const { accountId, id: _id, ...fields } = req.body;
       const caseData = await storage.updateCase(req.session.accountId!, req.params.id, fields);
@@ -286,7 +292,7 @@ export async function registerRoutes(
     res.json(events);
   });
 
-  app.get("/api/events/:id", requireAuth, async (req, res) => {
+  app.get<IdParam>("/api/events/:id", requireAuth, async (req, res) => {
     const event = await storage.getEvent(req.session.accountId!, req.params.id);
     if (!event) return res.status(404).json({ error: "Event not found" });
     res.json(event);
@@ -299,7 +305,7 @@ export async function registerRoutes(
     res.status(201).json(event);
   });
 
-  app.put("/api/events/:id", requireAuth, async (req, res) => {
+  app.put<IdParam>("/api/events/:id", requireAuth, async (req, res) => {
     try {
       const { accountId, id: _id, ...fields } = req.body;
       const event = await storage.updateEvent(req.session.accountId!, req.params.id, fields);
@@ -316,7 +322,7 @@ export async function registerRoutes(
     res.json(files);
   });
 
-  app.get("/api/files/:id", requireAuth, async (req, res) => {
+  app.get<IdParam>("/api/files/:id", requireAuth, async (req, res) => {
     const file = await storage.getFile(req.session.accountId!, req.params.id);
     if (!file) return res.status(404).json({ error: "File not found" });
     res.json(file);
@@ -354,7 +360,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/files/:id/download", requireAuth, async (req, res) => {
+  app.get<IdParam>("/api/files/:id/download", requireAuth, async (req, res) => {
     const file = await storage.getFile(req.session.accountId!, req.params.id);
     if (!file) return res.status(404).json({ error: "File not found" });
     if (!file.filePath) return res.status(404).json({ error: "No file stored" });
@@ -369,7 +375,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/files/:id/view", requireAuth, async (req, res) => {
+  app.get<IdParam>("/api/files/:id/view", requireAuth, async (req, res) => {
     const file = await storage.getFile(req.session.accountId!, req.params.id);
     if (!file) return res.status(404).json({ error: "File not found" });
     if (!file.filePath) return res.status(404).json({ error: "No file stored" });
@@ -389,7 +395,7 @@ export async function registerRoutes(
     res.json(templates);
   });
 
-  app.get("/api/doc-templates/:id", requireAuth, async (req, res) => {
+  app.get<IdParam>("/api/doc-templates/:id", requireAuth, async (req, res) => {
     const template = await storage.getDocTemplate(req.session.accountId!, req.params.id);
     if (!template) return res.status(404).json({ error: "Template not found" });
     res.json(template);
@@ -437,7 +443,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/doc-templates/:id", requireAuth, async (req, res) => {
+  app.delete<IdParam>("/api/doc-templates/:id", requireAuth, async (req, res) => {
     try {
       const template = await storage.getDocTemplate(req.session.accountId!, req.params.id);
       if (!template) return res.status(404).json({ error: "Template not found" });
@@ -456,7 +462,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/doc-templates/:id/generate", requireAuth, async (req, res) => {
+  app.post<IdParam>("/api/doc-templates/:id/generate", requireAuth, async (req, res) => {
     try {
       const accountId = req.session.accountId!;
       const template = await storage.getDocTemplate(accountId, req.params.id);
@@ -573,7 +579,7 @@ export async function registerRoutes(
     res.json(templates);
   });
 
-  app.get("/api/email-templates/:id", requireAuth, async (req, res) => {
+  app.get<IdParam>("/api/email-templates/:id", requireAuth, async (req, res) => {
     const template = await storage.getEmailTemplate(req.session.accountId!, req.params.id);
     if (!template) return res.status(404).json({ error: "Template not found" });
     res.json(template);
@@ -586,7 +592,7 @@ export async function registerRoutes(
     res.status(201).json(template);
   });
 
-  app.put("/api/email-templates/:id", requireAuth, async (req, res) => {
+  app.put<IdParam>("/api/email-templates/:id", requireAuth, async (req, res) => {
     const existing = await storage.getEmailTemplate(req.session.accountId!, req.params.id);
     if (!existing) return res.status(404).json({ error: "Template not found" });
     const { name, type, subject, content } = req.body;
@@ -594,7 +600,7 @@ export async function registerRoutes(
     res.json(updated);
   });
 
-  app.delete("/api/email-templates/:id", requireAuth, async (req, res) => {
+  app.delete<IdParam>("/api/email-templates/:id", requireAuth, async (req, res) => {
     const existing = await storage.getEmailTemplate(req.session.accountId!, req.params.id);
     if (!existing) return res.status(404).json({ error: "Template not found" });
     await storage.deleteEmailTemplate(req.session.accountId!, req.params.id);
@@ -613,12 +619,12 @@ export async function registerRoutes(
     res.status(200).json(setting);
   });
 
-  app.get("/api/cases/:caseId/valuations", requireAuth, async (req, res) => {
+  app.get<CaseIdParam>("/api/cases/:caseId/valuations", requireAuth, async (req, res) => {
     const valuations = await storage.getValuationsByCase(req.session.accountId!, req.params.caseId);
     res.json(valuations);
   });
 
-  app.post("/api/cases/:caseId/valuations", requireAuth, async (req, res) => {
+  app.post<CaseIdParam>("/api/cases/:caseId/valuations", requireAuth, async (req, res) => {
     try {
       const accountId = req.session.accountId!;
       const existing = await storage.getCase(accountId, req.params.caseId);
@@ -638,7 +644,7 @@ export async function registerRoutes(
     }
   });
 
-  app.put("/api/valuations/:id", requireAuth, async (req, res) => {
+  app.put<IdParam>("/api/valuations/:id", requireAuth, async (req, res) => {
     try {
       const accountId = req.session.accountId!;
       const existing = await storage.getValuation(accountId, req.params.id);
@@ -657,7 +663,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/valuations/:id", requireAuth, async (req, res) => {
+  app.delete<IdParam>("/api/valuations/:id", requireAuth, async (req, res) => {
     try {
       const accountId = req.session.accountId!;
       const existing = await storage.getValuation(accountId, req.params.id);
@@ -675,7 +681,7 @@ export async function registerRoutes(
     res.json(reports);
   });
 
-  app.get("/api/reports/:id", requireAuth, async (req, res) => {
+  app.get<IdParam>("/api/reports/:id", requireAuth, async (req, res) => {
     const report = await storage.getReport(req.session.accountId!, req.params.id);
     if (!report) return res.status(404).json({ error: "Report not found" });
     res.json(report);
@@ -712,7 +718,7 @@ export async function registerRoutes(
     }
   });
 
-  app.put("/api/reports/:id", requireAuth, async (req, res) => {
+  app.put<IdParam>("/api/reports/:id", requireAuth, async (req, res) => {
     try {
       const { status } = req.body;
       if (!status) return res.status(400).json({ error: "Falta el estado" });
@@ -726,7 +732,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/reports/:id", requireAuth, async (req, res) => {
+  app.delete<IdParam>("/api/reports/:id", requireAuth, async (req, res) => {
     try {
       const existing = await storage.getReport(req.session.accountId!, req.params.id);
       if (!existing) return res.status(404).json({ error: "Report not found" });
