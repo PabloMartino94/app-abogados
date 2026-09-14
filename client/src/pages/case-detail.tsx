@@ -27,6 +27,24 @@ type DraftFields = {
   settledAmount: string;
 };
 
+// Borrador vacío: lo usa el alta y el fallback cuando todavía no cargó el
+// expediente. Al estar acá, agregar un campo a DraftFields obliga a definirlo.
+const DRAFT_VACIO: DraftFields = {
+  number: "",
+  fuero: "civil",
+  status: "Iniciado",
+  court: "",
+  startDate: "",
+  notes: "",
+  incidentDate: "",
+  counterparty: "",
+  insurer: "",
+  policyNumber: "",
+  policyLimit: "",
+  deductible: "",
+  settledAmount: "",
+};
+
 function caseToDraft(c: Case): DraftFields {
   return {
     number: c.number,
@@ -64,7 +82,7 @@ export default function CaseDetailPage() {
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<DraftFields>(() =>
-    caseItem ? caseToDraft(caseItem) : { number: "", fuero: "civil", status: "Iniciado", court: "", startDate: "", notes: "" }
+    caseItem ? caseToDraft(caseItem) : DRAFT_VACIO
   );
   const [saving, setSaving] = useState(false);
 

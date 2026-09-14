@@ -85,3 +85,5 @@ chequear("Sábado es inhábil", esDiaHabil(parseFecha("2026-03-07"), sinFeria), 
 chequear("Domingo es inhábil", esDiaHabil(parseFecha("2026-03-08"), sinFeria), false);
 
 console.log(fallos === 0 ? "\nTODO OK" : `\n${fallos} FALLA(S)`);
+// Exit code distinto de cero para que `npm test` sirva como señal automática.
+process.exitCode = fallos === 0 ? 0 : 1;

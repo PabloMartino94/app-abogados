@@ -91,3 +91,5 @@ cerca("Pc=1 no hay multa", d2.multa, 0, 0.001);
 chequear("21 centavos", montoALetras(5.21).texto, "cinco pesos con veintiún centavos");
 
 console.log(fallos === 0 ? "\nTODO OK" : `\n${fallos} FALLA(S)`);
+// Exit code distinto de cero para que `npm test` sirva como señal automática.
+process.exitCode = fallos === 0 ? 0 : 1;

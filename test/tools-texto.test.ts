@@ -48,3 +48,5 @@ chequear("diff iguales", diff.iguales, 2);
 chequear("diff sin cambios", compararTextos("a\nb", "a\nb").agregadas, 0);
 
 console.log(fallos === 0 ? "\nTODO OK" : `\n${fallos} FALLA(S)`);
+// Exit code distinto de cero para que `npm test` sirva como señal automática.
+process.exitCode = fallos === 0 ? 0 : 1;
